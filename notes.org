@@ -1,0 +1,26 @@
+* To-do list
+** TODO fix miscellaneous data issues
+- [ ] Fix underlying data points wehre upper layer is deeper than or equal to lower layer
+** TODO aggregate Epischura data by month and from whichever depths we decide [2/2]
+*** TODO Figure out depths to use [1/2]
+  - [X] View epischura abundance by depth
+  - [ ] Make histogram for Steph showing which depth intervals are most commonly sampled
+** TODO aggregate phytoplankton data by month and from whichever depths we decide [0/1]
+*** TODO Figure out which taxa to use [0/2]
+  - [ ] Filter phyto data to *genera* that at some point constitute 10% of abundance
+  - [ ] Then create graph of most abundant in winter vs summer
+  - [ ] Finally, discuss the above with Steph
+** TODO aggregate temperature data [/]
+- [ ] Subset date range to dates of interest
+- [ ] Select most frequently sampled depths
+** TODO aggregate chlorophyll data [/]
+- [ ] Subset date range to dates of interest
+- [ ] Select most frequently sampled depths
+
+
+* Notes
+** 2015-12-01 call with Steph
+- Probably we want to target 0-150 meters as our depth range.
+- For temperature and chlorophyll: pick the depths with greatest number of samples and combine into one average. E.g. choose 0, 5(?), 10, 25, 50 etc. for temperature. That way data from rarely-sampled depths won't disproportionately affect our numbers.
+- We'll probably have to start all data in 1975 due to the switch in phytoplankton preservation in the 70s.
+- What are the most important phytoplankton species? Could use a multivariate approach to decide, but in the meantime it would be helpful to see which genera in the phytoplankton are most common in winter vs. summer. Maybe if something never constitutes >10% of abundance let's not even think about it, then look at what's most abundant in summer vs. winter.
