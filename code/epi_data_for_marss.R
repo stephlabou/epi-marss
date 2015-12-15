@@ -224,3 +224,21 @@ temp %>%
   tally() %>%
   print()
 
+## Commonly sampled depths for Epischura - first create single column for depth
+## layer
+epi_layers <- epi_corr_units %>%
+  arrange(upper_layer) %>%
+  mutate(depth = paste(upper_layer, lower_layer, sep = "-"))
+
+## Then make the column an ordered factor so the histogram bars are displayed in
+## order by upper_layer
+epi_layers$depth <- ordered(epi_layers$depth, levels = unique(epi_layers$depth))
+
+## Plot
+epi_layers %>%
+  group_by(depth) %>%
+  ggplot(aes(x = depth)) +
+  geom_histogram(stat = "bin") +
+  theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
+  ggtitle("Sampling frequency of depth layers for Epischura") +
+  ggsave("../figs/epi_sampling_depth_freq.png")

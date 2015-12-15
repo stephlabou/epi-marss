@@ -2,9 +2,9 @@
 ** TODO fix miscellaneous data issues
 - [ ] Fix underlying data points wehre upper layer is deeper than or equal to lower layer
 ** TODO aggregate Epischura data by month and from whichever depths we decide [2/2]
-*** TODO Figure out depths to use [1/2]
+*** TODO Figure out depths to use [2/2]
   - [X] View epischura abundance by depth
-  - [ ] Make histogram for Steph showing which depth intervals are most commonly sampled
+  - [X] Make histogram for Steph showing which depth intervals are most commonly sampled
 ** TODO aggregate phytoplankton data by month and from whichever depths we decide [0/1]
 *** TODO Figure out which taxa to use [0/2]
   - [ ] Filter phyto data to *genera* that at some point constitute 10% of abundance
