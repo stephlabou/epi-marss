@@ -311,3 +311,38 @@ ggplot(phy_final, aes(x = genus, y = density)) +
   ggsave(paste0("../figs/phyto_genera_winter_summer_", Sys.Date(), ".png"),
          width = 10, height = 7)
 
+## Different version with winter defined as Feb/Mar/April/May. I should DRY this
+## up but we really only need it as a one-off calculation...(she said
+## famous-last-wordsily)
+phy_feb <- phy %>%
+  filter(genus %in% genera &
+         month %in% c(2, 3, 4, 5, 7, 8, 9) &
+         depth <= 150) %>%
+  ## First sum within genera for each date and depth
+  group_by(date, depth, genus) %>%
+  summarize(density = sum(density)) %>%
+  ## Then average across dates and depths
+  mutate(season = ifelse(month(date) %in% c(2, 3, 4, 5), "winter", "summer")) %>%
+  group_by(season, genus) %>%
+  summarize(density = mean(density)) %>%
+  top_n(n = 10, wt = density) %>%
+  arrange(desc(density))
+
+phy_feb$genus <- factor(phy_feb$genus, levels = unique(phy_feb$genus))
+
+## Plot
+ggplot(phy_feb, aes(x = genus, y = density)) +
+  facet_grid(. ~ season, scales = "free_x") +
+  geom_bar(stat = "identity") +
+  scale_y_log10() +
+  theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
+  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Jan/Feb/Mar)") +
+  ggsave(paste0("../figs/phyto_genera_winter_summer_FMAM_", Sys.Date(), ".png"),
+         width = 10, height = 7)
+
+## Genera in phy_feb not present in phy_final
+as.character(phy_feb[phy_feb$season == "winter", ]$genus)[!as.character(phy_feb[phy_feb$season == "winter", ]$genus) %in% as.character(phy_final[phy_final$season == "winter", ]$genus)]
+
+## Genera in phy_final not present in phy_feb
+as.character(phy_final[phy_final$season == "winter", ]$genus)[!as.character(phy_final[phy_final$season == "winter", ]$genus) %in% as.character(phy_feb[phy_feb$season == "winter", ]$genus)]
+
