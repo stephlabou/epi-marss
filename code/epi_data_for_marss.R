@@ -308,4 +308,6 @@ ggplot(phy_final, aes(x = genus, y = density)) +
   scale_y_log10() +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
   ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Jan/Feb/Mar)") +
-  ggsave("../figs/phyto_genera_winter_summer.png", width = 10, height = 7)
+  ggsave(paste0("../figs/phyto_genera_winter_summer_", Sys.Date(), ".png"),
+         width = 10, height = 7)
+
