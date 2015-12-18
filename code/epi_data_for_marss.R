@@ -242,3 +242,66 @@ epi_layers %>%
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
   ggtitle("Sampling frequency of depth layers for Epischura") +
   ggsave("../figs/epi_sampling_depth_freq.png")
+
+#############################################
+####  Find out most abundant phyto taxa  ####
+#############################################
+
+## Steps:
+
+## - For each date and depth, find which genera constitute >= 10% of abundance
+
+## - Create a vector of these genera
+
+## - Subset overall data set to only these genera
+
+## - Subset data to Jan/Feb/Mar and Jul/Aug/Sep, average abundances of each
+## genera, show top 10
+
+phy <- read.csv(paste0(dir, "phyto/Baikal_Phyto_zeroesInc_2countRemoved_KeyUpdate_20120728.csv"), stringsAsFactors = FALSE)
+names(phy) <- tolower(names(phy))
+phy$date <- as.Date(phy$date, "%m/%d/%Y")
+
+## Only keep data from >=1975 due to change in algae preservation technique
+phy <- filter(phy, year >= 1975)
+
+## For each date and depth, find which genera constitute >= 10% of abundance
+phy_sml <- phy %>%
+  group_by(date, depth) %>%
+  ## Sum density for each date and depth
+  mutate(dens_sum = sum(density)) %>%
+  ## Sum density for each genus at each date and depth
+  group_by(date, depth, genus) %>%
+  summarize(density = sum(density),
+            ## Need to keep the dens_sum column for later. The below is kind of
+            ## a hacky way to do that, but it should be fine because there
+            ## should be only one value of dens_sum for each date and depth. If
+            ## this errors, something has gone wrong before this point.
+            dens_sum = unique(dens_sum)) %>%
+  ## Keep genera that make up >=10% of the density
+  filter(density >= dens_sum / 10)
+
+## List of all genera that at some point constitute >=10% of abundance
+genera <- unique(phy_sml$genus)
+
+## Top 10 winter and summer genera above 150 m
+phy_final <- phy %>%
+  filter(genus %in% genera &
+         month %in% c(1, 2, 3, 7, 8, 9) &
+         depth <= 150) %>%
+  mutate(season = ifelse(month %in% c(1, 2, 3), "winter", "summer")) %>%
+  group_by(season, genus) %>%
+  summarize(density = mean(density)) %>%
+  top_n(n = 10, wt = density) %>%
+  arrange(desc(density))
+
+phy_final$genus <- factor(phy_final$genus, levels = unique(phy_final$genus))
+
+## Plot
+ggplot(phy_final, aes(x = genus, y = density)) +
+  facet_grid(. ~ season, scales = "free_x") +
+  geom_bar(stat = "identity") +
+  scale_y_log10() +
+  theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
+  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Jan/Feb/Mar)") +
+  ggsave("../figs/phyto_genera_winter_summer.png", width = 10, height = 7)

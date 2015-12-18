@@ -6,9 +6,9 @@
   - [X] View epischura abundance by depth
   - [X] Make histogram for Steph showing which depth intervals are most commonly sampled
 ** TODO aggregate phytoplankton data by month and from whichever depths we decide [0/1]
-*** TODO Figure out which taxa to use [0/2]
-  - [ ] Filter phyto data to *genera* that at some point constitute 10% of abundance
-  - [ ] Then create graph of most abundant in winter vs summer
+*** TODO Figure out which taxa to use [2/3]
+  - [X] Filter phyto data to *genera* that at some point constitute 10% of abundance
+  - [X] Then create graph of most abundant in winter vs summer
   - [ ] Finally, discuss the above with Steph
 ** TODO aggregate temperature data [/]
 - [ ] Subset date range to dates of interest
