@@ -289,7 +289,11 @@ phy_final <- phy %>%
   filter(genus %in% genera &
          month %in% c(1, 2, 3, 7, 8, 9) &
          depth <= 150) %>%
-  mutate(season = ifelse(month %in% c(1, 2, 3), "winter", "summer")) %>%
+  ## First sum within genera for each date and depth
+  group_by(date, depth, genus) %>%
+  summarize(density = sum(density)) %>%
+  ## Then average across dates and depths
+  mutate(season = ifelse(month(date) %in% c(1, 2, 3), "winter", "summer")) %>%
   group_by(season, genus) %>%
   summarize(density = mean(density)) %>%
   top_n(n = 10, wt = density) %>%
