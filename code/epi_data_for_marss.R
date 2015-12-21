@@ -346,3 +346,30 @@ as.character(phy_feb[phy_feb$season == "winter", ]$genus)[!as.character(phy_feb[
 ## Genera in phy_final not present in phy_feb
 as.character(phy_final[phy_final$season == "winter", ]$genus)[!as.character(phy_final[phy_final$season == "winter", ]$genus) %in% as.character(phy_feb[phy_feb$season == "winter", ]$genus)]
 
+##############################################################
+####  Find out more information on "Unidentified" phytos  ####
+##############################################################
+
+## Figure out which groups are represented by "Unidentified"
+unid <- phy %>%
+  filter(genus == "Unidentified") %>%
+  select(code, group, genus, species) %>%
+  unique()
+
+unique(unid$group)
+ ## [1] "Cyano"        "Green"        "Chryso"       "Bacteria"     "Flagellate"  
+ ## [6] "PicoAlgae"    "NanoAlgae"    "Cysts"        "Unidentified" "Alga"        
+
+## I checked the phyto key and there's no more information about these
+## unidentified taxa there. Let's see which are most abundant
+
+unid_abund <- phy %>%
+  filter(genus == "Unidentified") %>%
+  filter(depth <= 150) %>%
+  ## Sum within group/date/depth
+  group_by(date, depth, group) %>%
+  summarize(density = sum(density)) %>%
+  ## Average by group
+  group_by(group) %>%
+  summarize(density = mean(density))
+  
