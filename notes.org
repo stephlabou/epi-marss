@@ -6,11 +6,13 @@
   - [X] View epischura abundance by depth
   - [X] Make histogram for Steph showing which depth intervals are most commonly sampled
 ** TODO aggregate phytoplankton data by month and from whichever depths we decide [0/1]
-*** TODO Figure out which taxa to use [4/4]
+*** TODO Figure out which taxa to use [5/6]
   - [X] Filter phyto data to *genera* that at some point constitute 10% of abundance
   - [X] Then create graph of most abundant in winter vs summer
   - [X] Finally, discuss the above with Steph
   - [X] Find out more about unidentified taxa - are they picoplankton or something else? -- they're lots of things, including picos, but bacteria are most abundant
+  - [X] Sort unidentified taxa into nano, pico, and unknown
+  - [ ] Examine most abundant taxa by biomass instead of abundance
 ** TODO aggregate temperature data [/]
 - [ ] Subset date range to dates of interest
 - [ ] Select most frequently sampled depths

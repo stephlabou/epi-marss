@@ -249,6 +249,8 @@ epi_layers %>%
 
 ## Steps:
 
+## - Separate "unidentified" taxa into pico, nano, and unknown
+
 ## - For each date and depth, find which genera constitute >= 10% of abundance
 
 ## - Create a vector of these genera
@@ -265,44 +267,81 @@ phy$date <- as.Date(phy$date, "%m/%d/%Y")
 ## Only keep data from >=1975 due to change in algae preservation technique
 phy <- filter(phy, year >= 1975)
 
+## Separate "unidentified" taxa into pico, nano, and unknown groups -- first
+## figure out which codes from Lyubov's key correspond to which group
+
+unid_group <- function(x) {
+  ## Function to group unidentified genera into picoplankton, nanoplankton, and
+  ## unknown using size information from Lyubov's plankton key
+  if (x %in% c(526, 9526, 586, 587)) {  # pico
+    result <- "unid_pico"
+  } else if (x %in% c(527, 529, 583, 483, 550, 8550, 9550, 551, 8551, 552, 8552,
+                      553, 8553, 554, 584, 580, 581, 582, 535, 536, 537, 538,
+                      9538, 539, 9539, 540, 542, 543, 557, 570, 571, 572, 573,
+                      574, 532, 531, 563, 564, 560, 561, 562)) { # nano
+    result <- "unid_nano"
+  } else if (x %in% c(1, 119, 120, 141, 193, 206, 211, 236, 237, 250, 263, 414,
+                      443, 484, 521, 530, 533, 534, 549, 565, 566, 569, 575,
+                      579, 588, 589, 590, 593, 594, 595, 596, 597, 598, 599,
+                      8120, 8549, 8566, 9533, 9534, 9551)) { # unknown
+    result <- "unid_unid"
+  } else {
+    result <- unique(phy[phy$code == x, "genus"])
+  }
+  return(result)
+}
+
+## Apply the funciton above to create a revised genus column that separates
+## "unidentified" into "unid_pico", "unid_nano", and "unid_unid". This takes a
+## long time, it needs to run overnight.
+phy_newgen <- phy %>%
+  rowwise() %>%
+  mutate(genus_revised = unid_group(code))
+
+## ghastly results of system.time() on the above:
+##     user   system  elapsed 
+## 16078.62 10263.24 26544.29 
+
 ## For each date and depth, find which genera constitute >= 10% of abundance
-phy_sml <- phy %>%
+phy_sml <- phy_newgen %>%
+  ## Remove old genus column so I don't accidentally use it
+  select(-genus) %>%
+  ## Total phytoplankton density for each date and depth
   group_by(date, depth) %>%
-  ## Sum density for each date and depth
   mutate(dens_sum = sum(density)) %>%
   ## Sum density for each genus at each date and depth
-  group_by(date, depth, genus) %>%
+  group_by(date, depth, genus_revised) %>%
   summarize(density = sum(density),
             ## Need to keep the dens_sum column for later. The below is kind of
             ## a hacky way to do that, but it should be fine because there
             ## should be only one value of dens_sum for each date and depth. If
             ## this errors, something has gone wrong before this point.
             dens_sum = unique(dens_sum)) %>%
-  ## Keep genera that make up >=10% of the density
+  ## Keep genera that make up >=10% of the total phytoplankton density
   filter(density >= dens_sum / 10)
 
 ## List of all genera that at some point constitute >=10% of abundance
-genera <- unique(phy_sml$genus)
+genera <- unique(phy_sml$genus_revised)
 
 ## Top 10 winter and summer genera above 150 m
-phy_final <- phy %>%
-  filter(genus %in% genera &
+phy_final <- phy_newgen %>%
+  filter(genus_revised %in% genera &
          month %in% c(1, 2, 3, 7, 8, 9) &
          depth <= 150) %>%
   ## First sum within genera for each date and depth
-  group_by(date, depth, genus) %>%
+  group_by(date, depth, genus_revised) %>%
   summarize(density = sum(density)) %>%
   ## Then average across dates and depths
   mutate(season = ifelse(month(date) %in% c(1, 2, 3), "winter", "summer")) %>%
-  group_by(season, genus) %>%
+  group_by(season, genus_revised) %>%
   summarize(density = mean(density)) %>%
   top_n(n = 10, wt = density) %>%
   arrange(desc(density))
 
-phy_final$genus <- factor(phy_final$genus, levels = unique(phy_final$genus))
+phy_final$genus_revised <- factor(phy_final$genus_revised, levels = unique(phy_final$genus_revised))
 
 ## Plot
-ggplot(phy_final, aes(x = genus, y = density)) +
+ggplot(phy_final, aes(x = genus_revised, y = density)) +
   facet_grid(. ~ season, scales = "free_x") +
   geom_bar(stat = "identity") +
   scale_y_log10() +
@@ -314,29 +353,29 @@ ggplot(phy_final, aes(x = genus, y = density)) +
 ## Different version with winter defined as Feb/Mar/April/May. I should DRY this
 ## up but we really only need it as a one-off calculation...(she said
 ## famous-last-wordsily)
-phy_feb <- phy %>%
-  filter(genus %in% genera &
+phy_feb <- phy_newgen %>%
+  filter(genus_revised %in% genera &
          month %in% c(2, 3, 4, 5, 7, 8, 9) &
          depth <= 150) %>%
   ## First sum within genera for each date and depth
-  group_by(date, depth, genus) %>%
+  group_by(date, depth, genus_revised) %>%
   summarize(density = sum(density)) %>%
   ## Then average across dates and depths
   mutate(season = ifelse(month(date) %in% c(2, 3, 4, 5), "winter", "summer")) %>%
-  group_by(season, genus) %>%
+  group_by(season, genus_revised) %>%
   summarize(density = mean(density)) %>%
   top_n(n = 10, wt = density) %>%
   arrange(desc(density))
 
-phy_feb$genus <- factor(phy_feb$genus, levels = unique(phy_feb$genus))
+phy_feb$genus_revised <- factor(phy_feb$genus_revised, levels = unique(phy_feb$genus_revised))
 
 ## Plot
-ggplot(phy_feb, aes(x = genus, y = density)) +
+ggplot(phy_feb, aes(x = genus_revised, y = density)) +
   facet_grid(. ~ season, scales = "free_x") +
   geom_bar(stat = "identity") +
   scale_y_log10() +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
-  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Jan/Feb/Mar)") +
+  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Feb/Mar/Apr/May)") +
   ggsave(paste0("../figs/phyto_genera_winter_summer_FMAM_", Sys.Date(), ".png"),
          width = 10, height = 7)
 
@@ -372,4 +411,5 @@ unid_abund <- phy %>%
   ## Average by group
   group_by(group) %>%
   summarize(density = mean(density))
-  
+
+
