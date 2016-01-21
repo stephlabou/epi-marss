@@ -302,6 +302,14 @@ phy_newgen <- phy %>%
 ##     user   system  elapsed 
 ## 16078.62 10263.24 26544.29 
 
+## Export to CSV so I don't have to rerun this every time.
+write.csv(phy_newgen,
+          "../data/phy_with_three_unidentified_groups.csv",
+          row.names = FALSE)
+
+phy_newgen <- read.csv("../data/phy_with_three_unidentified_groups.csv",
+                       stringsAsFactors = FALSE)
+
 ## For each date and depth, find which genera constitute >= 10% of abundance
 phy_sml <- phy_newgen %>%
   ## Remove old genus column so I don't accidentally use it
