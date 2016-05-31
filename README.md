@@ -16,7 +16,8 @@ but I haven't done that here.
 ## What has been done so far?
 
 Mostly a lot of exploring various aspects of the data to help guide decisions
-about what data to use. 
+about what data to use. See the `epi_data_for_marss.R` script for the code that
+does everything described below.
 
 ### Epischura data
 
