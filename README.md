@@ -6,15 +6,17 @@ Last updated by Kara Woo on May 31, 2016
 
 This code is the beginnings of preparing the long-term Lake Baikal plankton data
 for analysis with
-[MARSS](https://cran.r-project.org/web/packages/MARSS/index.html). The data is
-not in this repo. The data lives in a Subversion repository that you'll need
-access to in order to run the code. In the future it would probably be better to
-symlink the data into the repository, but I haven't done that here.
+[MARSS](https://cran.r-project.org/web/packages/MARSS/index.html). This analysis
+will ultimately incorporate data on *Epischura baikalensis*, temperature,
+chlorophyll, and phytoplankton. The data is not in this repo. The data lives in
+a Subversion repository that you'll need access to in order to run the code. In
+the future it would probably be better to symlink the data into the repository,
+but I haven't done that here.
 
 ## What has been done so far?
 
 Mostly a lot of exploring various aspects of the data to help guide decisions
-about what data to use.
+about what data to use. 
 
 ### Epischura data
 
