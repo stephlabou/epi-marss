@@ -13,9 +13,8 @@ library("lubridate")
 ## Need to have all life stages of Epischura, minus those that are known to be
 ## double counts
 
-## Directory of the long-term data repo on my machine. Obviously this will need
-## to be changed if anyone else wants to run the code, but for right now it's
-## just me...
+## Directory of the long-term data Subversion repository. UPDATE THIS to run the
+## code on your own machine.
 dir <- "/Users/Kara/projects/baikal_svn/Longterm_data/"
 
 ## Load the main zooplankton data file and make column names lower case Note:
@@ -50,9 +49,9 @@ epi <- filter(fulldat, kod %in% nodbl) %>%
 ## individuals/liter, use the following function:
 
 m2_to_l <- function(x, interval) {
-  stopifnot(is.numeric(x))              # count should be numeric
+  stopifnot(is.numeric(x))                           # count should be numeric
   ## takes units in 1000 individuals/m2 and converts to individuals per liter
-  individuals <- x * 1000 # convert to individuals/m2
+  individuals <- x * 1000                            # convert to individuals/m2
   count_per_liter <- individuals / (interval * 1000) # convert to indiv./liter
   return(count_per_liter)
 }
@@ -72,7 +71,8 @@ epi_corr_units <- epi %>%
 ####  View lifestage groups  ####
 #################################
 
-## Eventually we'll need this information to group the Epischura data by stage
+## List of life stage groups for Epischura. Eventually we'll need this
+## information to group the Epischura data by stage.
 unique(epi_corr_units$lifestage_gen)    # juv vs adult
 unique(epi_corr_units$lifestage_cop)    # naup, copep, adult
 unique(epi_corr_units[, c("code", "lifestage_cop")])
@@ -143,6 +143,11 @@ chla %>%
 ####  View epi abundance and chla by depth  ####
 ################################################
 
+## View average Epischura abundance by depth interval (note that overlapping
+## depth intervals are considered separately with this approach -- the values
+## for depth intervals 0-10, 10-25, and 25-50 do NOT go into 0-50; the only
+## observations considered in 0-50 are the ones that came from samples of the
+## whole 0-50 layer).
 epi_depth_abund <- epi_corr_units %>%
   group_by(upper_layer, lower_layer) %>%
   summarize(mean_count = mean(count_l, na.rm = TRUE)) %>%
@@ -152,24 +157,24 @@ epi_depth_abund <- epi_corr_units %>%
 
 epi_depth_abund$layer <- ordered(epi_depth_abund$layer, levels = epi_depth_abund$layer)
 
+## Plot these average abundances
 ggplot(epi_depth_abund, aes(x = layer, y = mean_count)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
   ggtitle("Rather awkward representation of Epischura abundance by depth")
 
 ## Well there's something weird here: a row where upper_layer is 250,
-## lower_layer is 150, and abundance is negative
+## lower_layer is 150, and abundance is negative. View this data:
 epi_corr_units %>%
   filter(upper_layer == 250 & lower_layer == 150)
 
-## This happens on 2002-06-13
+## This issue comes up on on 2002-06-13. Look at the original data for that date:
 unique(epi[epi$date == as.Date("2002-06-13"), c("date", "upper_layer", "lower_layer")])
 ## Okay, it looks like the upper and lower layer got switched. There is data
 ## from 100 to 150 and 250 to 500, so there should be 150 to 250. Ughhhhhh. And
 ## no one caught this before. Sigh.
 
 ## Another problem is a row where the upper and lower layers are both 150.
-## Remove this for now from the plot; fix later
 
 ## I'll have to fix the above but for now I will just remove rows where
 ## upper_layer is greater than or equal to lower_layer
@@ -193,7 +198,7 @@ epi_corr_units %>%
   group_by(over_under_50) %>%
   summarize(mean_count = mean(count_l, na.rm = TRUE, ))
 
-## Chlorophyll
+## View mean chlorophyll by depth
 chla_by_depth <- chla %>%
   group_by(depth) %>%
   summarize(mean_chla = mean(chla, na.rm = TRUE))
@@ -238,7 +243,7 @@ epi_layers$depth <- ordered(epi_layers$depth, levels = unique(epi_layers$depth))
 epi_layers %>%
   group_by(depth) %>%
   ggplot(aes(x = depth)) +
-  geom_histogram(stat = "bin") +
+  geom_bar() +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
   ggtitle("Sampling frequency of depth layers for Epischura") +
   ggsave("../figs/epi_sampling_depth_freq.png")
@@ -346,6 +351,7 @@ phy_final <- phy_newgen %>%
   top_n(n = 10, wt = density) %>%
   arrange(desc(density))
 
+## Convert revised genus to factor
 phy_final$genus_revised <- factor(phy_final$genus_revised, levels = unique(phy_final$genus_revised))
 
 ## Plot
@@ -358,9 +364,8 @@ ggplot(phy_final, aes(x = genus_revised, y = density)) +
   ggsave(paste0("../figs/phyto_genera_winter_summer_", Sys.Date(), ".png"),
          width = 10, height = 7)
 
-## Different version with winter defined as Feb/Mar/April/May. I should DRY this
-## up but we really only need it as a one-off calculation...(she said
-## famous-last-wordsily)
+## Different version with winter defined as Feb/Mar/April/May instead of
+## Jan/Feb/Mar. This may be more appropriate for Baikal's seasons.
 phy_feb <- phy_newgen %>%
   filter(genus_revised %in% genera &
          month %in% c(2, 3, 4, 5, 7, 8, 9) &
@@ -419,5 +424,3 @@ unid_abund <- phy %>%
   ## Average by group
   group_by(group) %>%
   summarize(density = mean(density))
-
-
