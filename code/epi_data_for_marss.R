@@ -16,17 +16,17 @@ library("lubridate")
 ## Directory of the long-term data repo on my machine. Obviously this will need
 ## to be changed if anyone else wants to run the code, but for right now it's
 ## just me...
-setwd("/Users/Kara/projects/baikal_svn/Longterm_data/")
+dir <- "/Users/Kara/projects/baikal_svn/Longterm_data/"
 
 ## Load the main zooplankton data file and make column names lower case Note:
 ## this is the data with zeroes already in place when species codes weren't
 ## observed
-fulldat <- read.csv("zoo/data/zoopzeroskey_alldepths.csv",
+fulldat <- read.csv(paste0(dir, "zoo/data/zoopzeroskey_alldepths.csv"),
                     stringsAsFactors = FALSE)
 colnames(fulldat) <- tolower(colnames(fulldat))
 
 ## Load zooplankton key and make column names lower case
-key <- read.csv("zoo/data/key.csv", stringsAsFactors = FALSE)
+key <- read.csv(paste0(dir, "zoo/data/key.csv"), stringsAsFactors = FALSE)
 colnames(key) <- tolower(colnames(key))
 
 ########################################################
@@ -81,7 +81,7 @@ unique(epi_corr_units[, c("code", "lifestage_cop")])
 ####  Average temperature data by month  ####
 #############################################
 
-temp <- read.csv("temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv",
+temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv"),
                  stringsAsFactors = FALSE)
 
 temp_month <- temp %>%
@@ -95,7 +95,7 @@ temp_month <- temp %>%
 ####  Average chlorophyll data by month  ####
 #############################################
 
-chla <- read.csv("temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv",
+chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv"),
                  stringsAsFactors = FALSE)
 
 chla_month <- chla %>%
@@ -260,8 +260,7 @@ epi_layers %>%
 ## - Subset data to Jan/Feb/Mar and Jul/Aug/Sep, average abundances of each
 ## genera, show top 10
 
-phy <- read.csv("phyto/Baikal_Phyto_zeroesInc_2countRemoved_KeyUpdate_20120728.csv",
-                stringsAsFactors = FALSE)
+phy <- read.csv(paste0(dir, "phyto/Baikal_Phyto_zeroesInc_2countRemoved_KeyUpdate_20120728.csv"), stringsAsFactors = FALSE)
 names(phy) <- tolower(names(phy))
 phy$date <- as.Date(phy$date, "%m/%d/%Y")
 
