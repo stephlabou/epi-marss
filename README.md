@@ -67,9 +67,10 @@ Due to a change in algae preservation technique, only phytoplankton data from
 
 I separated unidentified phytoplankton taxa into picoplankton, nanoplankton, and
 unknown based on information in the original phytoplankton key
-(`Phytoplankton_Key_20120725.xls`).
+(`Phytoplankton_Key_20120725.xls`, which is located in the Subversion repository
+containing the data under `Longterm_data/phyto/Phytoplankton_key/`).
 
-For each date and depth, I found the genera that constitute >=10% of
+for each date and depth, I found the genera that constitute >=10% of
 phytoplankton abundance. Then, I created a list of all genera that at some point
 constitute >=10% of abundance. I plotted the most common genera in summer (July,
 August, September) and winter (I first defined winter as January, February, and
