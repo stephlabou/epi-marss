@@ -15,7 +15,7 @@ library("lubridate")
 
 ## Directory of the long-term data Subversion repository. UPDATE THIS to run the
 ## code on your own machine.
-dir <- "/Users/Kara/projects/baikal_svn/Longterm_data/"
+dir <- "C:/Labou/Baikal_MARSS/baikal_svn/Longterm_data/"
 
 ## Load the main zooplankton data file and make column names lower case Note:
 ## this is the data with zeroes already in place when species codes weren't
