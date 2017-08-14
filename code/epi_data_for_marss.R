@@ -454,3 +454,45 @@ unid_abund <- phy %>%
   group_by(group) %>%
   summarize(density = mean(density)) %>% 
   arrange(desc(density))
+
+#################################################
+####  Limit depth across data - exploratory  ####
+#################################################
+
+hist(temp$depth)
+hist(chla$depth)
+hist(phy_sml$depth) 
+#phyto keeps data from >=1975 due to change in algae preservation technique
+#limit other as well to match
+
+head(epi_corr_units)
+
+temp50 <- filter(temp, depth <= 50 & year(as.Date(date))>= 1975)
+chla50 <- filter(chla, depth <= 50 & year(as.Date(date))>= 1975)
+#should really redo so keep any genera >=10% *for depths <= 50m*
+phy_sml50 <- filter(phy_sml, depth <= 50) %>% as.data.frame() #already limited to >=1975
+
+epi_corr_units50 <- epi_corr_units %>% 
+                    filter(upper_layer <= 50 & lower_layer <= 50 & year(as.Date(date))>= 1975) %>% 
+                    mutate(layers = paste(upper_layer, lower_layer, sep = "-"))
+
+unique(epi_corr_units50$layers) %>% sort()
+# [1] "0-10"  "0-25"  "0-50"  "10-25" "25-50"
+#so, have sequential: 0-10, 10-25, 25-50; and overlap 0-25, 0-50
+
+ggplot(epi_corr_units50, aes(layers, count_l)) +
+  geom_violin()
+
+filter(epi_corr_units50, layers == "0-25")
+#well that's weird - there are no Epi in 0-25,
+#but tons in 0-10 and 10-25...
+#I do not trust the 0-25 layers
+filter(epi_corr_units50, layers == "0-25") %>% summarize(mean_count = mean(count_l))
+
+ggplot(epi_corr_units50, aes(layers, count_l)) +
+  geom_boxplot() +
+  ylim(0, 5)
+
+ggplot(epi_corr_units50, aes(layers, count_l)) +
+  geom_violin() +
+  geom_jitter()
