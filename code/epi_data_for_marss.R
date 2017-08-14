@@ -480,14 +480,14 @@ unique(epi_corr_units50$layers) %>% sort()
 # [1] "0-10"  "0-25"  "0-50"  "10-25" "25-50"
 #so, have sequential: 0-10, 10-25, 25-50; and overlap 0-25, 0-50
 
-ggplot(epi_corr_units50, aes(layers, count_l)) +
-  geom_violin()
-
-filter(epi_corr_units50, layers == "0-25")
-#well that's weird - there are no Epi in 0-25,
-#but tons in 0-10 and 10-25...
-#I do not trust the 0-25 layers
-filter(epi_corr_units50, layers == "0-25") %>% summarize(mean_count = mean(count_l))
+#check out counts by depth layers
+epi_corr_units50 %>% 
+  group_by(layers) %>% 
+  summarize(min_count = min(count_l), 
+            max_count = max(count_l),
+            mean_count = mean(count_l),
+            median_count = median(count_l))
+#yeah, there's something up with 0-25, I don't trust it
 
 ggplot(epi_corr_units50, aes(layers, count_l)) +
   geom_boxplot() +
@@ -496,3 +496,6 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
 ggplot(epi_corr_units50, aes(layers, count_l)) +
   geom_violin() +
   geom_jitter()
+
+
+
