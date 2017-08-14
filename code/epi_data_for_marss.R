@@ -15,7 +15,7 @@ library("lubridate")
 
 ## Directory of the long-term data Subversion repository. UPDATE THIS to run the
 ## code on your own machine.
-dir <- "C:/Labou/Baikal_MARSS/baikal_svn/Longterm_data/"
+dir <- "D:/Labou/Baikal/baikal/Longterm_data/"
 
 ## Load the main zooplankton data file and make column names lower case Note:
 ## this is the data with zeroes already in place when species codes weren't
@@ -66,6 +66,8 @@ epi_corr_units <- epi %>%
   ## Filter out data that's listed as being from 1908 -- this is clearly a
   ## mistake
   filter(as.Date(date) >= as.Date("1945-01-01"))
+
+## count_l has negatives (when upper layer > lower layer), and Inf (one one instance, where upper layer = lower layer)
 
 #################################
 ####  View lifestage groups  ####
@@ -120,6 +122,8 @@ epi_corr_units %>%
   geom_histogram(binwidth = 10) +
   ggtitle("Maximum sampling depth histogram: Epischura") +
   ggsave("../figs/epi_depth_hist.png")
+#highest count for max depth is 500
+#i.e., most epi counts are from max depth 500
 
 ## It's probably different for temp and chla
 
@@ -130,6 +134,8 @@ temp %>%
   geom_histogram(binwidth = 10) +
   ggtitle("Maximum sampling depth histogram: temperature") +
   ggsave("../figs/temp_depth_hist.png")
+#highest count for maxdepth is 50
+#i.e., temp counts max depth usually only 50
 
 chla %>%
   group_by(date) %>%
@@ -138,6 +144,11 @@ chla %>%
   geom_histogram(binwidth = 10) +
   ggtitle("Maximum sampling depth histogram: chlorophyll") +
   ggsave("../figs/chla_depth_hist.png")
+#max depth usually 150
+#i.e., chla max depth usually only 150
+#so, epi counts are from deepest, then chla, then temp
+#if want all, probably stay within 50m, since that's as deep as temp usually goes
+
 
 ################################################
 ####  View epi abundance and chla by depth  ####
@@ -150,16 +161,30 @@ chla %>%
 ## whole 0-50 layer).
 epi_depth_abund <- epi_corr_units %>%
   group_by(upper_layer, lower_layer) %>%
-  summarize(mean_count = mean(count_l, na.rm = TRUE)) %>%
+  summarize(mean_count = mean(count_l, na.rm = TRUE),
+            n = length(count_l)) %>%
   ungroup() %>%
   arrange(lower_layer) %>%
-  mutate(layer = paste(upper_layer, lower_layer, sep = "-"))
+  mutate(layer = paste(upper_layer, lower_layer, sep = "-")) %>% 
+  as.data.frame()
+
+#want to tag ones that are sequential vs overlapping
+#e.g., 0-150 is overlapping whereas 0-10, 10-25, etc. is sequential
+#and the ones that are negative or Inf
+#grrr I know I did this before, stupid hard drive wipe...
+
+sequential <- c("0-10", "10-25", "25-50", "50-100", "100-150", "150-250", "250-500")
+
+epi_depth_abund <- epi_depth_abund %>% 
+                    mutate(tag = ifelse(layer %in% sequential, "sequential",
+                                        ifelse(mean_count < 0 | is.infinite(mean_count), "weird", "overlapping")))
+#epi_depth_abund %>% arrange(tag, layer)
 
 epi_depth_abund$layer <- ordered(epi_depth_abund$layer, levels = epi_depth_abund$layer)
 
 ## Plot these average abundances
 ggplot(epi_depth_abund, aes(x = layer, y = mean_count)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", aes(fill = tag)) +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
   ggtitle("Rather awkward representation of Epischura abundance by depth")
 
@@ -181,7 +206,7 @@ unique(epi[epi$date == as.Date("2002-06-13"), c("date", "upper_layer", "lower_la
 epi_depth_abund %>%
   filter(upper_layer < lower_layer) %>%
   ggplot(aes(x = layer, y = mean_count)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", aes(fill = tag)) +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
   ggtitle("Rather awkward representation of Epischura abundance by depth") +
   ylab("Mean Epischura count (individuals/liter)") +
@@ -196,7 +221,7 @@ epi_corr_units %>%
   ## Remove infinite value in count_l - should do this more permanently later
   mutate(count_l = ifelse(is.infinite(count_l), NA, count_l)) %>%
   group_by(over_under_50) %>%
-  summarize(mean_count = mean(count_l, na.rm = TRUE, ))
+  summarize(mean_count = mean(count_l, na.rm = TRUE))
 
 ## View mean chlorophyll by depth
 chla_by_depth <- chla %>%
@@ -241,8 +266,10 @@ epi_layers$depth <- ordered(epi_layers$depth, levels = unique(epi_layers$depth))
 
 ## Plot
 epi_layers %>%
+  mutate(tag = ifelse(depth %in% sequential, "sequential",
+                      ifelse(count_l < 0 | is.infinite(count_l), "weird", "overlapping"))) %>% 
   group_by(depth) %>%
-  ggplot(aes(x = depth)) +
+  ggplot(aes(x = depth, fill = tag)) +
   geom_bar() +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
   ggtitle("Sampling frequency of depth layers for Epischura") +
@@ -299,18 +326,18 @@ unid_group <- function(x) {
 ## Apply the funciton above to create a revised genus column that separates
 ## "unidentified" into "unid_pico", "unid_nano", and "unid_unid". This takes a
 ## long time, it needs to run overnight.
-phy_newgen <- phy %>%
-  rowwise() %>%
-  mutate(genus_revised = unid_group(code))
+# phy_newgen <- phy %>%
+#   rowwise() %>%
+#   mutate(genus_revised = unid_group(code))
 
 ## ghastly results of system.time() on the above:
 ##     user   system  elapsed 
 ## 16078.62 10263.24 26544.29 
 
-## Export to CSV so I don't have to rerun this every time.
-write.csv(phy_newgen,
-          "../data/phy_with_three_unidentified_groups.csv",
-          row.names = FALSE)
+# ## Export to CSV so I don't have to rerun this every time.
+# write.csv(phy_newgen,
+#           "../data/phy_with_three_unidentified_groups.csv",
+#           row.names = FALSE)
 
 phy_newgen <- read.csv("../data/phy_with_three_unidentified_groups.csv",
                        stringsAsFactors = FALSE)
@@ -331,6 +358,7 @@ phy_sml <- phy_newgen %>%
             ## this errors, something has gone wrong before this point.
             dens_sum = unique(dens_sum)) %>%
   ## Keep genera that make up >=10% of the total phytoplankton density
+  # *for any depth and date*
   filter(density >= dens_sum / 10)
 
 ## List of all genera that at some point constitute >=10% of abundance
@@ -392,11 +420,11 @@ ggplot(phy_feb, aes(x = genus_revised, y = density)) +
   ggsave(paste0("../figs/phyto_genera_winter_summer_FMAM_", Sys.Date(), ".png"),
          width = 10, height = 7)
 
-## Genera in phy_feb not present in phy_final
-as.character(phy_feb[phy_feb$season == "winter", ]$genus)[!as.character(phy_feb[phy_feb$season == "winter", ]$genus) %in% as.character(phy_final[phy_final$season == "winter", ]$genus)]
+## Genera in phy_feb not present in phy_final == Stephanodiscus
+as.character(phy_feb[phy_feb$season == "winter", ]$genus_revised)[!as.character(phy_feb[phy_feb$season == "winter", ]$genus_revised) %in% as.character(phy_final[phy_final$season == "winter", ]$genus_revised)]
 
-## Genera in phy_final not present in phy_feb
-as.character(phy_final[phy_final$season == "winter", ]$genus)[!as.character(phy_final[phy_final$season == "winter", ]$genus) %in% as.character(phy_feb[phy_feb$season == "winter", ]$genus)]
+## Genera in phy_final not present in phy_feb == Aulacoseira
+as.character(phy_final[phy_final$season == "winter", ]$genus_revised)[!as.character(phy_final[phy_final$season == "winter", ]$genus_revised) %in% as.character(phy_feb[phy_feb$season == "winter", ]$genus_revised)]
 
 ##############################################################
 ####  Find out more information on "Unidentified" phytos  ####
@@ -417,10 +445,12 @@ unique(unid$group)
 
 unid_abund <- phy %>%
   filter(genus == "Unidentified") %>%
+  ## Less than 150m depth
   filter(depth <= 150) %>%
   ## Sum within group/date/depth
   group_by(date, depth, group) %>%
   summarize(density = sum(density)) %>%
   ## Average by group
   group_by(group) %>%
-  summarize(density = mean(density))
+  summarize(density = mean(density)) %>% 
+  arrange(desc(density))
