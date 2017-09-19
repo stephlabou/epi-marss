@@ -77,7 +77,43 @@ epi_corr_units <- epi %>%
 ## information to group the Epischura data by stage.
 unique(epi_corr_units$lifestage_gen)    # juv vs adult
 unique(epi_corr_units$lifestage_cop)    # naup, copep, adult
-unique(epi_corr_units[, c("code", "lifestage_cop")])
+unique(epi_corr_units[, c("code", "lifestage_cop")]) %>% arrange(lifestage_cop, code)
+
+## Some sanity checks:
+
+## Checking that all stages are counted in all years
+## (limiting here to 1975 to match phyto)
+
+epi_check <- epi_corr_units %>% 
+              mutate(year = year(as.Date(date, format = "%Y-%m-%d"))) %>% 
+              group_by(year, lifestage_cop) %>% 
+              summarize(n=length(lifestage_cop)) %>% 
+              filter(year >= 1975) %>% 
+              #make sure each year has 3 stages (adult, copep, naup)
+              ungroup() %>% 
+              group_by(year) %>% 
+              summarize(nn = length(lifestage_cop)) %>% 
+              as.data.frame() %>% 
+              filter(nn!=3)
+epi_check
+#ok, all years since 1975 (inclusive) count all 3 lifestages
+
+#by date instead of year
+epi_corr_units %>% 
+  mutate(year = year(as.Date(date, format = "%Y-%m-%d"))) %>% 
+  group_by(date) %>% 
+  summarize(n = n_distinct(lifestage_cop)) %>% 
+  filter(n!=3)
+
+epi_corr_units %>% 
+  group_by(date, code) %>% 
+  summarize(n = n_distinct(lifestage_cop)) %>% 
+  filter(n!=1)
+
+#what's going on with each date? specific numbers within life stages
+filter(epi_corr_units, date == "1960-01-29") %>% head(20)
+filter(epi_corr_units, date == "1960-01-29" & upper_layer == 25) %>% 
+  arrange(lifestage_gen, lifestage_cop, gender)
 
 #############################################
 ####  Average temperature data by month  ####
@@ -365,10 +401,12 @@ phy_sml <- phy_newgen %>%
 genera <- unique(phy_sml$genus_revised)
 
 ## Top 10 winter and summer genera above 150 m
+#SL: adjusted to be 50 m - match lowest temp depth
 phy_final <- phy_newgen %>%
   filter(genus_revised %in% genera &
          month %in% c(1, 2, 3, 7, 8, 9) &
-         depth <= 150) %>%
+         #depth <= 150) %>%
+          depth <= 50) %>% 
   ## First sum within genera for each date and depth
   group_by(date, depth, genus_revised) %>%
   summarize(density = sum(density)) %>%
@@ -388,7 +426,7 @@ ggplot(phy_final, aes(x = genus_revised, y = density)) +
   geom_bar(stat = "identity") +
   scale_y_log10() +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
-  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Jan/Feb/Mar)") +
+  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Jan/Feb/Mar) - 50 m") +
   ggsave(paste0("../figs/phyto_genera_winter_summer_", Sys.Date(), ".png"),
          width = 10, height = 7)
 
@@ -416,7 +454,7 @@ ggplot(phy_feb, aes(x = genus_revised, y = density)) +
   geom_bar(stat = "identity") +
   scale_y_log10() +
   theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
-  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Feb/Mar/Apr/May)") +
+  ggtitle("Most abundant phytoplankton genera (Jul/Aug/Sep vs. Feb/Mar/Apr/May) - 50 m") +
   ggsave(paste0("../figs/phyto_genera_winter_summer_FMAM_", Sys.Date(), ".png"),
          width = 10, height = 7)
 
