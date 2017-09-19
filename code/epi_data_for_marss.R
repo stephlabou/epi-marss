@@ -113,7 +113,7 @@ epi_corr_units %>%
 #what's going on with each date? specific numbers within life stages
 filter(epi_corr_units, date == "1960-01-29") %>% head(20)
 filter(epi_corr_units, date == "1960-01-29" & upper_layer == 25) %>% 
-  arrange(lifestage_gen, lifestage_cop, gender)
+  arrange(lifestage_gen, lifestage_cop, lifestage_num, gender)
 
 #############################################
 ####  Average temperature data by month  ####
@@ -435,7 +435,8 @@ ggplot(phy_final, aes(x = genus_revised, y = density)) +
 phy_feb <- phy_newgen %>%
   filter(genus_revised %in% genera &
          month %in% c(2, 3, 4, 5, 7, 8, 9) &
-         depth <= 150) %>%
+         depth <= 50) %>% 
+         #depth <= 150) %>%
   ## First sum within genera for each date and depth
   group_by(date, depth, genus_revised) %>%
   summarize(density = sum(density)) %>%
@@ -463,6 +464,83 @@ as.character(phy_feb[phy_feb$season == "winter", ]$genus_revised)[!as.character(
 
 ## Genera in phy_final not present in phy_feb == Aulacoseira
 as.character(phy_final[phy_final$season == "winter", ]$genus_revised)[!as.character(phy_final[phy_final$season == "winter", ]$genus_revised) %in% as.character(phy_feb[phy_feb$season == "winter", ]$genus_revised)]
+
+
+## ----> Same, but for species
+
+## Common winter and summer species
+phy_sp_common <- phy_newgen %>%
+          ## Keep only common genera, months of interest, and depths of interest
+          filter(genus_revised %in% genera &
+                   month %in% c(1, 2, 3, 7, 8, 9) &
+                   depth <= 50) %>% 
+          ## Create genus_species column
+          mutate(genus_species = paste(genus_revised, species, sep = ".")) %>% 
+          ## First sum within genus_species for each date and depth
+          ## (Even though shouldn't be necessary, there are a few instances where
+          ## code is different but date, depth, and genus_species have duplicates;
+          ## also especially necessary because of all the unid_unid)
+          group_by(date, depth, genus_species) %>%
+          summarize(density = sum(density)) %>%
+          ## Then average across dates and depths
+          mutate(season = ifelse(month(date) %in% c(1, 2, 3), "winter", "summer")) %>%
+          group_by(season, genus_species) %>%
+          summarize(density = mean(density)) %>%
+          top_n(n = 10, wt = density) %>%
+          arrange(season, desc(density)) %>% 
+          as.data.frame()
+
+## Convert revised genus_species to factor
+phy_sp_common$genus_species <- factor(phy_sp_common$genus_species, levels = unique(phy_sp_common$genus_species))
+
+## Plot
+ggplot(phy_sp_common, aes(x = genus_species, y = density)) +
+  facet_grid(. ~ season, scales = "free_x") +
+  geom_bar(stat = "identity") +
+  scale_y_log10() +
+  theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
+  ggtitle("Most abundant phytoplankton species (Jul/Aug/Sep vs. Jan/Feb/Mar) - 50 m") +
+  ggsave(paste0("../figs/phyto_species_winter_summer_", Sys.Date(), ".png"),
+         width = 10, height = 7)
+
+## Different version with winter defined as Feb/Mar/April/May instead of
+## Jan/Feb/Mar. This may be more appropriate for Baikal's seasons.
+
+## Common winter and summer species - alt winter/summer seasons
+phy_sp_common_feb <- phy_newgen %>%
+              ## Keep only common genera, months of interest, and depths of interest
+              filter(genus_revised %in% genera &
+                       month %in% c(2, 3, 4, 5, 7, 8, 9) &
+                       depth <= 50) %>% 
+              ## Create genus_species column
+              mutate(genus_species = paste(genus_revised, species, sep = ".")) %>% 
+              ## First sum within genus_species for each date and depth
+              ## (Even though shouldn't be necessary, there are a few instances where
+              ## code is different but date, depth, and genus_species have duplicates;
+              ## also especially necessary because of all the unid_unid)
+              group_by(date, depth, genus_species) %>%
+              summarize(density = sum(density)) %>%
+              ## Then average across dates and depths
+              mutate(season = ifelse(month(date) %in% c(2, 3, 4, 5), "winter", "summer")) %>%
+              group_by(season, genus_species) %>%
+              summarize(density = mean(density)) %>%
+              top_n(n = 10, wt = density) %>%
+              arrange(season, desc(density)) %>% 
+              as.data.frame()
+
+## Convert revised genus_species to factor
+phy_sp_common_feb$genus_species <- factor(phy_sp_common_feb$genus_species, levels = unique(phy_sp_common_feb$genus_species))
+
+## Plot
+ggplot(phy_sp_common_feb, aes(x = genus_species, y = density)) +
+  facet_grid(. ~ season, scales = "free_x") +
+  geom_bar(stat = "identity") +
+  scale_y_log10() +
+  theme(axis.text.x=element_text(angle = 45, hjust = 1)) +
+  ggtitle("Most abundant phytoplankton species (Jul/Aug/Sep vs. Feb/Mar/Apr/May) - 50 m") +
+  ggsave(paste0("../figs/phyto_species_winter_summer_FMAM_", Sys.Date(), ".png"),
+         width = 10, height = 7)
+
 
 ##############################################################
 ####  Find out more information on "Unidentified" phytos  ####
