@@ -620,7 +620,7 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
 
 #From SH, groups are:
 
-# 1.	Cyanodictyon = Synecodchus (sp?) + Synechocystic + unid_pico
+# 1.	Cyanodictyon + Synechocystic + unid_pico
 # 2.	Romeria
 # 3.	unid_nano
 # 4.	Chrysidalis
@@ -641,6 +641,8 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
 
 unique(phy_newgen$genus_revised) %>% sort()
 
+## ----> phyto groups
+
 phyto_groups <- c("Cyanodictyon", "Synechocystis", "unid_pico",
                   "Romeria", "unid_nano", "Chrysidalis", "Nitzchia",
                   "Dinobryon", "Chroomonas", "Stephanodiscus",
@@ -651,10 +653,27 @@ phy_dat_grouped <- phy_newgen %>%
                     select(-genus) %>% 
                     #keep only genera of interest
                     filter(genus_revised %in% phyto_groups) %>% 
-                    #make new merged group - STILL MISSING ONE GROUP NAME
+                    #make new merged group
                     mutate(genus_groups = ifelse(genus_revised %in% c("Cyanodictyon", "Synechocystis", "unid_pico"),
-                                                 "Cyanodictyon.Synechocysteis.unidpico.XX", genus_revised)) %>% 
+                                                 "picoplankton", genus_revised)) %>% 
                     #already limited to 1975; limit to <= 50 meters
-                    filter(depth <= 50)
+                    filter(depth <= 50) %>% 
+                    #aggregate within date, depth, and genus group
+                    group_by(year, month, date, depth, genus_groups) %>% 
+                    summarize(density_genus_sum = sum(density)) %>% 
+                    as.data.frame()
 
+# filter(phy_newgen, date == "1975-01-07" & genus_revised == "Nitzchia" & depth == 20)
+# filter(phy_dat_grouped, date == "1975-01-07" & genus_groups == "Nitzchia" & depth == 20)
+# 
+# filter(phy_newgen, date == "1999-11-04" & genus_revised == "Aulacoseira" & depth == 50)
+# filter(phy_dat_grouped, date == "1999-11-04" & genus_groups == "Aulacoseira" & depth == 50)
 
+head(phy_dat_grouped)
+
+## ----> zoop groups
+
+head(epi_corr_units) #only Epischura - will need to get cyclops data from elsewhere
+
+epi_groups <- epi_corr_units %>% 
+              mutate(layer_group)
