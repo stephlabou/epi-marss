@@ -613,6 +613,8 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
   geom_violin() +
   geom_jitter()
 
+#SH: I agree re depth and year. 1975 it is, and 50m. 
+
 
 #########################################
 ####  Grouping phyto and epi stages  ####
@@ -676,4 +678,20 @@ head(phy_dat_grouped)
 head(epi_corr_units) #only Epischura - will need to get cyclops data from elsewhere
 
 epi_groups <- epi_corr_units %>% 
-              mutate(layer_group)
+              mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
+              #for now, sticking with sequential depths to 50 m
+              filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
+              mutate(layer_group = ordered(layer_group, levels = c("0-10", "10-25", "25-50"))) %>% 
+              #group and aggregate counts within Epi lifestages (adult, copep, naup)
+              group_by(date, layer_group, upper_layer, lower_layer, genus, lifestage_cop) %>% 
+              summarize(count_l_sum = sum(count_l)) %>% 
+              #keep only since 1975
+              mutate(year = year(as.Date(date))) %>% 
+              filter(year >= 1975) %>% 
+              as.data.frame()
+
+# filter(epi_corr_units, date == "1975-01-07" & lifestage_cop == "naup" & upper_layer == 0 & lower_layer == 10)
+# filter(epi_groups, date == "1975-01-07" & lifestage_cop == "naup" & upper_layer == 0 & lower_layer == 10)
+# 
+# filter(epi_corr_units, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25)
+# filter(epi_groups, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25) 
