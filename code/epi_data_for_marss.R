@@ -614,4 +614,47 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
   geom_jitter()
 
 
+#########################################
+####  Grouping phyto and epi stages  ####
+#########################################
+
+#From SH, groups are:
+
+# 1.	Cyanodictyon = Synecodchus (sp?) + Synechocystic + unid_pico
+# 2.	Romeria
+# 3.	unid_nano
+# 4.	Chrysidalis
+# 5.	Nitzchia
+# 6.	Dinobryon
+# 7.	Chroomonas
+# 8.	Stephanodiscus
+# 9.	Synedra
+# 10.	Achnanthes
+# 11.	Melosira/Aulacoseira (in this dataste as "Aulacoseira")
+# 12.	unid_unid
+# 13.	Epischura adult
+# 14.	Epischura copep
+# 15.	Epischura nauplii
+# 16.	Cyclops adult
+
+#1-12 are phyto, 13-16 are zoop
+
+unique(phy_newgen$genus_revised) %>% sort()
+
+phyto_groups <- c("Cyanodictyon", "Synechocystis", "unid_pico",
+                  "Romeria", "unid_nano", "Chrysidalis", "Nitzchia",
+                  "Dinobryon", "Chroomonas", "Stephanodiscus",
+                  "Synedra", "Achnanthes", "Aulacoseira", "unid_unid")
+
+
+phy_dat_grouped <- phy_newgen %>% 
+                    select(-genus) %>% 
+                    #keep only genera of interest
+                    filter(genus_revised %in% phyto_groups) %>% 
+                    #make new merged group - STILL MISSING ONE GROUP NAME
+                    mutate(genus_groups = ifelse(genus_revised %in% c("Cyanodictyon", "Synechocystis", "unid_pico"),
+                                                 "Cyanodictyon.Synechocysteis.unidpico.XX", genus_revised)) %>% 
+                    #already limited to 1975; limit to <= 50 meters
+                    filter(depth <= 50)
+
 
