@@ -1,3 +1,8 @@
+## TO DO
+
+# [ ] are layer groups range inclusive? (0-10 group with <10 vs <=10)
+
+
 ###########################################
 ####  Prepare data for MARSS analysis  ####
 ###########################################
@@ -749,7 +754,29 @@ epi_grouped <- epi_corr_units %>%
 # filter(epi_corr_units, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25)
 # filter(epi_groups, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25) 
 
-head(epi_grouped)
+head(cyclop_corr_units)
+
+cyclop_grouped <- cyclop_corr_units %>% 
+                    mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
+                    #for now, sticking with sequential depths to 50 m
+                    filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
+                    mutate(layer_group = ordered(layer_group, levels = c("0-10", "10-25", "25-50"))) %>% 
+                    #keep only cyclops adults
+                    filter(lifestage_cop == "adult") %>% 
+                    #group and aggregate counts within cyclops adults
+                    group_by(date, layer_group, upper_layer, lower_layer, genus, lifestage_cop) %>% 
+                    summarize(count_l_sum = sum(count_l)) %>% 
+                    #keep only since 1975
+                    mutate(year = year(as.Date(date))) %>% 
+                    filter(year >= 1975) %>% 
+                    as.data.frame()
+
+# filter(cyclop_corr_units, date == "1975-03-10" & lifestage_cop == "adult" & upper_layer == 0 & lower_layer == 10)
+# filter(cyclop_grouped, date == "1975-03-10" & lifestage_cop == "adult" & upper_layer == 0 & lower_layer == 10)
+# 
+# filter(cyclop_corr_units, date == "1994-11-09" & lifestage_cop == "adult" & upper_layer == 25 & lower_layer == 50)
+# filter(cyclop_grouped, date == "1994-11-09" & lifestage_cop == "adult" & upper_layer == 25 & lower_layer == 50)
+
 
 # ----> limit chla and temp to 1975 and 50m
 
@@ -768,7 +795,72 @@ head(chla_match)
 head(temp_match)
 head(phy_dat_grouped)
 head(epi_grouped)
+head(cyclop_grouped)
 
+# ----> merge - match date and depth
+
+#merge and make long - NAs ok - can interpolate later
+
+#temp and chla (env vars)
+env_merge <- chla_match %>% 
+              select(-month, -Year) %>% 
+              merge(temp_match, by = c("date", "depth"), all = TRUE)
+
+#merge with phyto
+phyto_env_merge <- phy_dat_grouped %>% 
+                    select(-year, -month) %>% 
+                    merge(env_merge, by = c("date", "depth"), all = TRUE) %>% 
+                    select(date, depth, chla, temp, genus_groups, density_genus_sum)
+
+# #epi and cyclops
+# epi_test <- epi_grouped %>% select(date, layer_group) %>% unique() %>% arrange(date, layer_group)
+# cyclops_test <- cyclop_grouped %>% select(date, layer_group) %>% unique() %>% arrange(date, layer_group)
+# identical(epi_test, cyclops_test) #TRUE
+# #should be ok to stack (makes sense, since from same source data frame anyways)
+
+pred_stack <- rbind(epi_grouped, cyclop_grouped) %>% select(-year)
+
+# ----> check these out
+
+head(phyto_env_merge)
+head(pred_stack)
+
+#need to approximate layer group for env/phyto
+#well, well, well...I have no idea whether the layer groups are range inclusive
+#is 0-10 up to and including 10? is 0-10 <=10 and then 10-25 is >10?
+
+#for now, going to go with <=x and >x
+#since need 50 included as <=50...
+
+phyto_env_merge_layers <- phyto_env_merge %>% 
+                mutate(approx_layer = ifelse(depth <= 10, "0-10", NA),
+                       approx_layer = ifelse(depth >10 & depth <= 25, "10-25", approx_layer),
+                       approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer))
+
+# phyto_env_merge_layers %>% select(depth, approx_layer) %>% unique() %>% arrange(depth)
+
+head(phyto_env_merge_layers)
+head(pred_stack)
+
+pred_stack_ready <- pred_stack %>% 
+                  select(-upper_layer, -lower_layer)
+
+phyto_env_ready <- phyto_env_merge_layers %>% 
+                  select(-depth)
+
+full_merge <- merge(phyto_env_ready, pred_stack_ready,
+                    by.x = c("date", "approx_layer"),
+                    by.y = c("date", "layer_group")) %>% 
+              rename(phyto_genera = genus_groups,
+                     zoop_genera = genus,
+                     zoop_lifestage = lifestage_cop)
+
+#hmm...leave phyto and zoop genera in separate columns or combine?
+#count vs density 
+#would retain both and then have lots of NAs...
+#thinking remain separate since "phyto" vs "zoop"
+#sort of like "chla" vs "temp" rather than "variable" vs "value"
+#when value has variable (ha) units
 
 
 
