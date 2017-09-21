@@ -14,6 +14,10 @@
 library("dplyr")
 library("ggplot2")
 library("lubridate")
+library(reshape2)
+
+library(MAR1)
+library(MARSS)
 
 ## Need to have all life stages of Epischura, minus those that are known to be
 ## double counts
@@ -862,5 +866,48 @@ full_merge <- merge(phyto_env_ready, pred_stack_ready,
 #sort of like "chla" vs "temp" rather than "variable" vs "value"
 #when value has variable (ha) units
 
+#need to reshape so genera along top
+#will need to be very careful since phyto has density sum and zoop has count sum...
 
+#example MAR data
+data(L4.AllDates)
+head(L4.AllDates)
+
+head(full_merge)
+
+# ----> reshape so genera along top
+
+full_merge_wide1 <- dcast(full_merge, 
+                          date + approx_layer + chla + temp + zoop_genera +
+                            zoop_lifestage + count_l_sum ~ phyto_genera, value.var = "density_genus_sum")
+
+#ah yes, should do this above so doesn't barf...
+
+head(phyto_env_merge_layers)
+
+phyto_env_wide <- dcast(phyto_env_merge_layers,
+                        date + depth + chla + temp + approx_layer ~ genus_groups, value.var = "density_genus_sum")
+
+#gah, even further back to avoid the unnecessary NAs...
+head(phy_dat_grouped)
+
+phy_dat_grouped_wide <- phy_dat_grouped %>% 
+                    select(-year, -month) %>% 
+                    dcast(date + depth ~ genus_groups, value.var = "density_genus_sum")
+
+head(pred_stack)
+
+pred_stack_wide <- pred_stack %>% 
+                    mutate(genus_stage = paste(genus, lifestage_cop, sep = "_")) %>% 
+                    select(-genus, -lifestage_cop) %>% 
+                    dcast(date + layer_group + upper_layer + lower_layer ~ genus_stage, value.var = "count_l_sum")
+
+head(phy_dat_grouped_wide)
+head(pred_stack_wide)
+head(env_merge)
+
+#merge env with phyto
+
+phyto_env_wide_merge <- merge(phy_dat_grouped_wide, env_merge,
+                              by = c("date", "depth"))
 
