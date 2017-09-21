@@ -115,6 +115,8 @@ filter(epi_corr_units, date == "1960-01-29") %>% head(20)
 filter(epi_corr_units, date == "1960-01-29" & upper_layer == 25) %>% 
   arrange(lifestage_gen, lifestage_cop, lifestage_num, gender)
 
+
+
 #############################################
 ####  Average temperature data by month  ####
 #############################################
@@ -142,7 +144,6 @@ chla_month <- chla %>%
   ## Average chla by month
   group_by(monthyear) %>%
   summarize(chla = mean(chla, na.rm = TRUE))
-
 
 ####################################
 ####  View max depth histogram  ####
@@ -616,6 +617,57 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
 #SH: I agree re depth and year. 1975 it is, and 50m. 
 
 
+############################################
+############# Cyclops (adults) #############
+############################################
+
+#adapted from KW code (following along since I know less about the keys...)
+#can go back later and do filtering and renaming ahead of genus filter
+#but fine for now
+
+#keep only cyclops non-double counts
+cyclp_key <- filter(key, genus == "Cyclops" & doublecount %in% c("N", "M")) %>% .$kod
+
+cyclop <- filter(fulldat, kod %in% cyclp_key) %>%
+          ## Rename some columns
+          rename(code = kod, date = date, upper_layer = ver_gr, lower_layer = nig_gr)
+
+## Convert units to individuals / liter - NOTE this is going to need to be fixed
+## because there are  some mistakes in the upper/lower intervals  on a couple of
+## dates. This  causes negative  counts (if  upper is  below lower)  or infinite
+## counts (if upper and lower are the same). 
+cyclop_corr_units <- cyclop %>%
+            mutate(count_l = m2_to_l(count, interval = lower_layer - upper_layer)) %>%
+            select(-count) %>%
+            ## Filter out data that's listed as being from 1908 -- this is clearly a
+            ## mistake
+            filter(as.Date(date) >= as.Date("1945-01-01"))
+
+#check out lifestages
+unique(cyclop_corr_units$lifestage_gen) # NA, unknown, juv, adult
+unique(cyclop_corr_units$lifestage_cop) # naup, copep, adult, NA
+unique(cyclop_corr_units[, c("code", "lifestage_cop")]) %>% arrange(lifestage_cop, code)
+
+cyclp_check <- cyclop_corr_units %>% 
+          mutate(year = year(as.Date(date, format = "%Y-%m-%d"))) %>% 
+          group_by(year, lifestage_cop) %>% 
+          summarize(n=length(lifestage_cop)) %>% 
+          filter(year >= 1975) %>% 
+          #make sure each year has 4 stages (adult, copep, naup, NA)
+          ungroup() %>% 
+          group_by(year) %>% 
+          summarize(nn = length(lifestage_cop)) %>% 
+          as.data.frame() %>% 
+          filter(nn!=4)
+
+cyclp_check 
+
+cyclop_corr_units %>% 
+  mutate(year = year(as.Date(date, format = "%Y-%m-%d"))) %>% 
+  group_by(date) %>% 
+  summarize(n = n_distinct(lifestage_cop)) 
+
+
 #########################################
 ####  Grouping phyto and epi stages  ####
 #########################################
@@ -642,6 +694,7 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
 #1-12 are phyto, 13-16 are zoop
 
 unique(phy_newgen$genus_revised) %>% sort()
+
 
 ## ----> phyto groups
 
@@ -698,11 +751,7 @@ epi_grouped <- epi_corr_units %>%
 
 head(epi_grouped)
 
-#################################################
-####  Bring together phyto, epi, temp, chla  ####
-#################################################
-
-#limit chla and temp to 1975 and 50m
+# ----> limit chla and temp to 1975 and 50m
 
 chla_match <- chla %>% 
               #looks like chla already all since 1975...
@@ -714,7 +763,7 @@ temp_match <- temp %>%
               filter(year(as.Date(date))>=1975) %>% 
               filter(depth <= 50)
 
-#check out separate existing data frames
+# ----> check out separate existing data frames
 head(chla_match)
 head(temp_match)
 head(phy_dat_grouped)
