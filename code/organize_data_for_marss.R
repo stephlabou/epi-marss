@@ -70,29 +70,32 @@ zoop <- filter(fulldat, kod %in% keep_key) %>%
   ## Rename some columns
   rename(code = kod, date = date, upper_layer = ver_gr, lower_layer = nig_gr)
 
-a <- keep_key %>% sort()
-b <- zoop$code %>% unique() %>% sort()
-#no 32, 88...
+# a <- keep_key %>% sort()
+# b <- zoop$code %>% unique() %>% sort()
+# #no 32, 88...
+# 
+# missing <- a[!(a %in% b)]
+# b[!(b %in% a)]
+# 
+# filter(fulldat, kod %in% missing) #ok, so it's just not there
+# filter(key, kod %in% missing) %>% select(notes) %>% unique() #indeed, i see that NOW
+# 
+# filter(fulldat, kod %in% keep_key) %>% select(genus) %>% unique()
+# filter(fulldat, kod %in% keep_key) %>% filter(is.na(genus)) %>% head()
+# filter(fulldat, kod == 100) %>% head()
+# filter(key, kod == 100) %>% head()
+# 
+# #arggg there's lots of NA rows in data...
+# 
+# filter(fulldat, kod %in% epi_key) %>% select(genus) %>% unique()
+# filter(fulldat, kod %in% cyclp_key) %>% select(genus) %>% unique() #ah HA the na is coming from the cyclops key
+# filter(fulldat, kod %in% cyclp_key) %>% filter(is.na(genus)) %>% head()
+# weird_key <- filter(fulldat, kod %in% cyclp_key) %>% filter(is.na(genus)) %>% select(kod) %>% unique()
+# filter(key, kod %in% weird_key) #??????
+# filter(fulldat, kod %in% weird_key)
 
-missing <- a[!(a %in% b)]
-b[!(b %in% a)]
-
-filter(fulldat, kod %in% missing) #ok, so it's just not there
-filter(key, kod %in% missing) %>% select(notes) %>% unique() #indeed, i see that NOW
-
-filter(fulldat, kod %in% keep_key) %>% select(genus) %>% unique()
-filter(fulldat, kod %in% keep_key) %>% filter(is.na(genus)) %>% head()
-filter(fulldat, kod == 100) %>% head()
-filter(key, kod == 100) %>% head()
-
-#arggg there's lots of NA rows in data...
-
-filter(fulldat, kod %in% epi_key) %>% select(genus) %>% unique()
-filter(fulldat, kod %in% cyclp_key) %>% select(genus) %>% unique() #ah HA the na is coming from the cyclops key
-filter(fulldat, kod %in% cyclp_key) %>% filter(is.na(genus)) %>% head()
-weird_key <- filter(fulldat, kod %in% cyclp_key) %>% filter(is.na(genus)) %>% select(kod) %>% unique()
-filter(key, kod %in% weird_key) #??????
-filter(fulldat, kod %in% weird_key)
+#there are NA values which are useless...so refiltering to keep only Epi and Cyclops
+zoop_fix <- filter(zoop, genus %in% c("Epischura", "Cyclops"))
 
 
 ###############################
