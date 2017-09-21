@@ -632,7 +632,7 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
 # 8.	Stephanodiscus
 # 9.	Synedra
 # 10.	Achnanthes
-# 11.	Melosira/Aulacoseira (in this dataste as "Aulacoseira")
+# 11.	Melosira/Aulacoseira (in this dataset as "Aulacoseira")
 # 12.	unid_unid
 # 13.	Epischura adult
 # 14.	Epischura copep
@@ -677,7 +677,7 @@ head(phy_dat_grouped)
 
 head(epi_corr_units) #only Epischura - will need to get cyclops data from elsewhere
 
-epi_groups <- epi_corr_units %>% 
+epi_grouped <- epi_corr_units %>% 
               mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
               #for now, sticking with sequential depths to 50 m
               filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
@@ -695,3 +695,31 @@ epi_groups <- epi_corr_units %>%
 # 
 # filter(epi_corr_units, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25)
 # filter(epi_groups, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25) 
+
+head(epi_grouped)
+
+#################################################
+####  Bring together phyto, epi, temp, chla  ####
+#################################################
+
+#limit chla and temp to 1975 and 50m
+
+chla_match <- chla %>% 
+              #looks like chla already all since 1975...
+              #but just in case...
+              filter(year(as.Date(date))>=1975) %>% 
+              filter(depth <= 50)
+
+temp_match <- temp %>% 
+              filter(year(as.Date(date))>=1975) %>% 
+              filter(depth <= 50)
+
+#check out separate existing data frames
+head(chla_match)
+head(temp_match)
+head(phy_dat_grouped)
+head(epi_grouped)
+
+
+
+
