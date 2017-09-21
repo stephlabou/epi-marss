@@ -9,15 +9,33 @@
 
 ## We are using data since 1975 and above 50m (inclusive)
 
-library("dplyr")
-library("ggplot2")
-library("lubridate")
+#From SH, groups are:
+
+# 1.	Cyanodictyon + Synechocystic + unid_pico
+# 2.	Romeria
+# 3.	unid_nano
+# 4.	Chrysidalis
+# 5.	Nitzchia
+# 6.	Dinobryon
+# 7.	Chroomonas
+# 8.	Stephanodiscus
+# 9.	Synedra
+# 10.	Achnanthes
+# 11.	Melosira/Aulacoseira (in this dataset as "Aulacoseira")
+# 12.	unid_unid
+# 13.	Epischura adult
+# 14.	Epischura copep
+# 15.	Epischura nauplii
+# 16.	Cyclops adult
+
+#(1-12 are phyto, 13-16 are zoop)
+
+## Load packages
+library(dplyr)
+library(lubridate)
 library(reshape2)
 library(MAR1)
 library(MARSS)
-
-## Need to have all life stages of Epischura, minus those that are known to be
-## double counts
 
 ## Directory of the long-term data Subversion repository. UPDATE THIS to run the
 ## code on your own machine.
@@ -27,9 +45,8 @@ dir <- "D:/Labou/Baikal/baikal/Longterm_data/"
 ####################  Load data  #######################
 ########################################################
 
-## Load the main zooplankton data file and make column names lower case Note:
-## this is the data with zeroes already in place when species codes weren't
-## observed
+## Load the main zooplankton data file and make column names lower case 
+## Note: this is the data with zeroes already in place when species codes weren't observed
 fulldat <- read.csv(paste0(dir, "zoo/data/zoopzeroskey_alldepths.csv"),
                     stringsAsFactors = FALSE)
 colnames(fulldat) <- tolower(colnames(fulldat))
@@ -39,17 +56,44 @@ key <- read.csv(paste0(dir, "zoo/data/key.csv"), stringsAsFactors = FALSE)
 colnames(key) <- tolower(colnames(key))
 
 ######################################################################
-####  Organize zoop data (Epischura baicalensis & adult Cyclops)  ####
+#########  Keep only Epischura baicalensis & adult Cyclops  ##########
 ######################################################################
 
-## Codes that represent Epischura non-double counts according to Derek's key:
-nodbl <- filter(key, genus == "Epischura" & species == "baicalensis"
-                & doublecount %in% c("N", "M")) %>% .$kod
+## Codes that represent Epischura/Cyclops non-double counts according to Derek's key:
+epi_key <- filter(key, genus == "Epischura" & species == "baicalensis"& doublecount %in% c("N", "M")) %>% .$kod
+cyclp_key <- filter(key, genus == "Cyclops" & doublecount %in% c("N", "M")) %>% .$kod
 
-## Keep only the Epischura non-double counts
-epi <- filter(fulldat, kod %in% nodbl) %>%
+keep_key <- c(epi_key, cyclp_key) %>% unique() #unique just in case weirdness
+
+## Keep only the Epischura/Cyclops non-double counts
+zoop <- filter(fulldat, kod %in% keep_key) %>%
   ## Rename some columns
   rename(code = kod, date = date, upper_layer = ver_gr, lower_layer = nig_gr)
+
+a <- keep_key %>% sort()
+b <- zoop$code %>% unique() %>% sort()
+#no 32, 88...
+
+missing <- a[!(a %in% b)]
+b[!(b %in% a)]
+
+filter(fulldat, kod %in% missing) #ok, so it's just not there
+filter(key, kod %in% missing) %>% select(notes) %>% unique() #indeed, i see that NOW
+
+filter(fulldat, kod %in% keep_key) %>% select(genus) %>% unique()
+filter(fulldat, kod %in% keep_key) %>% filter(is.na(genus)) %>% head()
+filter(fulldat, kod == 100) %>% head()
+filter(key, kod == 100) %>% head()
+
+#arggg there's lots of NA rows in data...
+
+filter(fulldat, kod %in% epi_key) %>% select(genus) %>% unique()
+filter(fulldat, kod %in% cyclp_key) %>% select(genus) %>% unique() #ah HA the na is coming from the cyclops key
+filter(fulldat, kod %in% cyclp_key) %>% filter(is.na(genus)) %>% head()
+weird_key <- filter(fulldat, kod %in% cyclp_key) %>% filter(is.na(genus)) %>% select(kod) %>% unique()
+filter(key, kod %in% weird_key) #??????
+filter(fulldat, kod %in% weird_key)
+
 
 ###############################
 ####  Convert count units  ####
@@ -593,55 +637,6 @@ ggplot(epi_corr_units50, aes(layers, count_l)) +
 #SH: I agree re depth and year. 1975 it is, and 50m. 
 
 
-############################################
-############# Cyclops (adults) #############
-############################################
-
-#adapted from KW code (following along since I know less about the keys...)
-#can go back later and do filtering and renaming ahead of genus filter
-#but fine for now
-
-#keep only cyclops non-double counts
-cyclp_key <- filter(key, genus == "Cyclops" & doublecount %in% c("N", "M")) %>% .$kod
-
-cyclop <- filter(fulldat, kod %in% cyclp_key) %>%
-  ## Rename some columns
-  rename(code = kod, date = date, upper_layer = ver_gr, lower_layer = nig_gr)
-
-## Convert units to individuals / liter - NOTE this is going to need to be fixed
-## because there are  some mistakes in the upper/lower intervals  on a couple of
-## dates. This  causes negative  counts (if  upper is  below lower)  or infinite
-## counts (if upper and lower are the same). 
-cyclop_corr_units <- cyclop %>%
-  mutate(count_l = m2_to_l(count, interval = lower_layer - upper_layer)) %>%
-  select(-count) %>%
-  ## Filter out data that's listed as being from 1908 -- this is clearly a
-  ## mistake
-  filter(as.Date(date) >= as.Date("1945-01-01"))
-
-#check out lifestages
-unique(cyclop_corr_units$lifestage_gen) # NA, unknown, juv, adult
-unique(cyclop_corr_units$lifestage_cop) # naup, copep, adult, NA
-unique(cyclop_corr_units[, c("code", "lifestage_cop")]) %>% arrange(lifestage_cop, code)
-
-cyclp_check <- cyclop_corr_units %>% 
-  mutate(year = year(as.Date(date, format = "%Y-%m-%d"))) %>% 
-  group_by(year, lifestage_cop) %>% 
-  summarize(n=length(lifestage_cop)) %>% 
-  filter(year >= 1975) %>% 
-  #make sure each year has 4 stages (adult, copep, naup, NA)
-  ungroup() %>% 
-  group_by(year) %>% 
-  summarize(nn = length(lifestage_cop)) %>% 
-  as.data.frame() %>% 
-  filter(nn!=4)
-
-cyclp_check 
-
-cyclop_corr_units %>% 
-  mutate(year = year(as.Date(date, format = "%Y-%m-%d"))) %>% 
-  group_by(date) %>% 
-  summarize(n = n_distinct(lifestage_cop)) 
 
 
 #########################################
