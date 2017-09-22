@@ -1,7 +1,10 @@
 ## TO DO
 
-# [ ] are layer groups range inclusive? (0-10 group with <10 vs <=10)
+# [ ] layer mistakes, so count is negative or infinite
+#     [ ] what to do about NA layers 
+#     [ ] counts that are NA/NaN
 
+# [ ] are layer groups range inclusive? (0-10 group with <10 vs <=10)
 
 ###########################################
 ####  Prepare data for MARSS analysis  ####
@@ -42,11 +45,10 @@ library(MARSS)
 dir <- "D:/Labou/Baikal/baikal/Longterm_data/"
 
 ########################################################
-####################  Load data  #######################
+##################  Load zoop data  ####################
 ########################################################
 
-## Load the main zooplankton data file and make column names lower case 
-## Note: this is the data with zeroes already in place when species codes weren't observed
+## Note: this is the zooplankton data with zeroes already in place when species codes weren't observed
 fulldat <- read.csv(paste0(dir, "zoo/data/zoopzeroskey_alldepths.csv"),
                     stringsAsFactors = FALSE)
 colnames(fulldat) <- tolower(colnames(fulldat))
@@ -97,7 +99,6 @@ zoop <- filter(fulldat, kod %in% keep_key) %>%
 #there are NA values which are useless...so refiltering to keep only Epi and Cyclops
 zoop_fix <- filter(zoop, genus %in% c("Epischura", "Cyclops"))
 
-
 ###############################
 ####  Convert count units  ####
 ###############################
@@ -125,16 +126,50 @@ zoop_fix_corr_units <- zoop_fix %>%
   filter(as.Date(date) >= as.Date("1945-01-01"))
 
 ## count_l has negatives (when upper layer > lower layer), and Inf (one one instance, where upper layer = lower layer)
+# filter(zoop_fix_corr_units, count_l < 0)
+# filter(zoop_fix_corr_units, is.infinite(count_l))
+
+## For now, filter to keep only positive counts
+zoop_fix_corr_units <- zoop_fix_corr_units %>% 
+                        mutate(suspicious = ifelse(count_l < 0 | is.infinite(count_l), "suspicious", "normal")) %>% 
+                        filter(suspicious != "suspicious")
+                        #filter(suspicious == "normal")
+
+#have instances of NA, need to decide what to do with those...
+#and some NaN - all from NA layers or 150-150
+#NaN is when count is zero and layer diff is also 0 --> NaN
+
+# filter(zoop_fix, date == "1999-12-26" & upper_layer == 150 & lower_layer == 150)
+# filter(zoop_fix_corr_units, date == "1974-04-19" & is.na(upper_layer) & is.na(lower_layer))
+
+#Thinking without a layer and a count, it's just not usable, should filter out...
 
 #################################
 ####  View lifestage groups  ####
 #################################
 
-## List of life stage groups for Epischura. Eventually we'll need this
-## information to group the Epischura data by stage.
-unique(zoop_fix_corr_units$lifestage_gen)    # juv vs adult
-unique(zoop_fix_corr_units$lifestage_cop)    # naup, copep, adult
-unique(zoop_fix_corr_units[, c("code", "lifestage_cop")]) %>% arrange(lifestage_cop, code)
+# zoop_fix_corr_units %>% 
+#   select(genus, lifestage_cop) %>% 
+#   unique() %>% 
+#   arrange(genus, lifestage_cop)
+# zoop_fix_corr_units %>% 
+#   group_by(genus, lifestage_cop) %>% 
+#   summarize(n = n_distinct(date))
+  
+#keep only adult cyclops
+
+zoop_ready <- zoop_fix_corr_units %>% 
+              filter(ifelse(genus == "Cyclops", lifestage_cop == "adult", lifestage_cop %in% c("adult", "copep", "naup")))   
+
+# zoop_ready %>% 
+#   select(genus, lifestage_cop) %>% 
+#   unique() %>% 
+#   arrange(genus, lifestage_cop)
+# zoop_ready %>% 
+#   group_by(genus, lifestage_cop) %>% 
+#   summarize(n = n_distinct(date))
+
+#success
 
 
 #############################################
@@ -144,12 +179,12 @@ unique(zoop_fix_corr_units[, c("code", "lifestage_cop")]) %>% arrange(lifestage_
 temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv"),
                  stringsAsFactors = FALSE)
 
-temp_month <- temp %>%
-  ## Create column of months
-  mutate(monthyear = floor_date(as.Date(date), "month")) %>%
-  ## Average temp by month
-  group_by(monthyear) %>%
-  summarize(temp = mean(temp, na.rm = TRUE))
+# temp_month <- temp %>%
+#   ## Create column of months
+#   mutate(monthyear = floor_date(as.Date(date), "month")) %>%
+#   ## Average temp by month
+#   group_by(monthyear) %>%
+#   summarize(temp = mean(temp, na.rm = TRUE))
 
 #############################################
 ####  Average chlorophyll data by month  ####
@@ -158,12 +193,12 @@ temp_month <- temp %>%
 chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv"),
                  stringsAsFactors = FALSE)
 
-chla_month <- chla %>%
-  ## Create column of months
-  mutate(monthyear = floor_date(as.Date(date), "month")) %>%
-  ## Average chla by month
-  group_by(monthyear) %>%
-  summarize(chla = mean(chla, na.rm = TRUE))
+# chla_month <- chla %>%
+#   ## Create column of months
+#   mutate(monthyear = floor_date(as.Date(date), "month")) %>%
+#   ## Average chla by month
+#   group_by(monthyear) %>%
+#   summarize(chla = mean(chla, na.rm = TRUE))
 
 ##############################################
 ######  Read in and organize phyto data ######
@@ -219,8 +254,9 @@ chla_month <- chla %>%
 phy_newgen <- read.csv("../data/phy_with_three_unidentified_groups.csv",
                        stringsAsFactors = FALSE)
 
-
-
+##############################################
+##### Organize groups (zoop, phyto, env) #####
+##############################################
 
 ## ----> phyto groups
 
@@ -231,18 +267,18 @@ phyto_groups <- c("Cyanodictyon", "Synechocystis", "unid_pico",
 
 
 phy_dat_grouped <- phy_newgen %>% 
-  select(-genus) %>% 
-  #keep only genera of interest
-  filter(genus_revised %in% phyto_groups) %>% 
-  #make new merged group
-  mutate(genus_groups = ifelse(genus_revised %in% c("Cyanodictyon", "Synechocystis", "unid_pico"),
-                               "picoplankton", genus_revised)) %>% 
-  #already limited to 1975; limit to <= 50 meters
-  filter(depth <= 50) %>% 
-  #aggregate within date, depth, and genus group
-  group_by(year, month, date, depth, genus_groups) %>% 
-  summarize(density_genus_sum = sum(density)) %>% 
-  as.data.frame()
+      select(-genus) %>% 
+      #keep only genera of interest
+      filter(genus_revised %in% phyto_groups) %>% 
+      #make new merged group
+      mutate(genus_groups = ifelse(genus_revised %in% c("Cyanodictyon", "Synechocystis", "unid_pico"),
+                                   "picoplankton", genus_revised)) %>% 
+      #already limited to 1975; limit to <= 50 meters
+      filter(depth <= 50) %>% 
+      #aggregate within date, depth, and genus group
+      group_by(year, month, date, depth, genus_groups) %>% 
+      summarize(density_genus_sum = sum(density)) %>% 
+      as.data.frame()
 
 # filter(phy_newgen, date == "1975-01-07" & genus_revised == "Nitzchia" & depth == 20)
 # filter(phy_dat_grouped, date == "1975-01-07" & genus_groups == "Nitzchia" & depth == 20)
@@ -257,17 +293,17 @@ head(phy_dat_grouped)
 head(zoop_fix_corr_units) #only Epischura - will need to get cyclops data from elsewhere
 
 zoop_grouped <- zoop_fix_corr_units %>% 
-  mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
-  #for now, sticking with sequential depths to 50 m
-  filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
-  mutate(layer_group = ordered(layer_group, levels = c("0-10", "10-25", "25-50"))) %>% 
-  #group and aggregate counts within Epi lifestages (adult, copep, naup)
-  group_by(date, layer_group, upper_layer, lower_layer, genus, lifestage_cop) %>% 
-  summarize(count_l_sum = sum(count_l)) %>% 
-  #keep only since 1975
-  mutate(year = year(as.Date(date))) %>% 
-  filter(year >= 1975) %>% 
-  as.data.frame()
+        mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
+        #for now, sticking with sequential depths to 50 m
+        filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
+        mutate(layer_group = ordered(layer_group, levels = c("0-10", "10-25", "25-50"))) %>% 
+        #group and aggregate counts within Epi lifestages (adult, copep, naup)
+        group_by(date, layer_group, upper_layer, lower_layer, genus, lifestage_cop) %>% 
+        summarize(count_l_sum = sum(count_l)) %>% 
+        #keep only since 1975
+        mutate(year = year(as.Date(date))) %>% 
+        filter(year >= 1975) %>% 
+        as.data.frame()
 
 # filter(zoop_fix_corr_units, date == "1975-01-07" & lifestage_cop == "naup" & upper_layer == 0 & lower_layer == 10)
 # filter(zoop_grouped, date == "1975-01-07" & lifestage_cop == "naup" & upper_layer == 0 & lower_layer == 10)
@@ -285,14 +321,14 @@ zoop_grouped <- zoop_fix_corr_units %>%
 # ----> limit chla and temp to 1975 and 50m
 
 chla_match <- chla %>% 
-  #looks like chla already all since 1975...
-  #but just in case...
-  filter(year(as.Date(date))>=1975) %>% 
-  filter(depth <= 50)
+        #looks like chla already all since 1975...
+        #but just in case...
+        filter(year(as.Date(date))>=1975) %>% 
+        filter(depth <= 50)
 
 temp_match <- temp %>% 
-  filter(year(as.Date(date))>=1975) %>% 
-  filter(depth <= 50)
+        filter(year(as.Date(date))>=1975) %>% 
+        filter(depth <= 50)
 
 # ----> check out separate existing data frames
 head(chla_match)
@@ -307,22 +343,15 @@ head(cyclop_grouped)
 
 #temp and chla (env vars)
 env_merge <- chla_match %>% 
-  select(-month, -Year) %>% 
-  merge(temp_match, by = c("date", "depth"), all = TRUE)
+        select(-month, -Year) %>% 
+        merge(temp_match, by = c("date", "depth"), all = TRUE)
 
 #merge with phyto
 phyto_env_merge <- phy_dat_grouped %>% 
-  select(-year, -month) %>% 
-  merge(env_merge, by = c("date", "depth"), all = TRUE) %>% 
-  select(date, depth, chla, temp, genus_groups, density_genus_sum)
+        select(-year, -month) %>% 
+        merge(env_merge, by = c("date", "depth"), all = TRUE) %>% 
+        select(date, depth, chla, temp, genus_groups, density_genus_sum)
 
-# #epi and cyclops
-# epi_test <- epi_grouped %>% select(date, layer_group) %>% unique() %>% arrange(date, layer_group)
-# cyclops_test <- cyclop_grouped %>% select(date, layer_group) %>% unique() %>% arrange(date, layer_group)
-# identical(epi_test, cyclops_test) #TRUE
-# #should be ok to stack (makes sense, since from same source data frame anyways)
-
-pred_stack <- rbind(epi_grouped, cyclop_grouped) %>% select(-year)
 
 # ----> check these out
 
@@ -341,30 +370,6 @@ phyto_env_merge_layers <- phyto_env_merge %>%
          approx_layer = ifelse(depth >10 & depth <= 25, "10-25", approx_layer),
          approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer))
 
-# phyto_env_merge_layers %>% select(depth, approx_layer) %>% unique() %>% arrange(depth)
-
-head(phyto_env_merge_layers)
-head(pred_stack)
-
-pred_stack_ready <- pred_stack %>% 
-  select(-upper_layer, -lower_layer)
-
-phyto_env_ready <- phyto_env_merge_layers %>% 
-  select(-depth)
-
-full_merge <- merge(phyto_env_ready, pred_stack_ready,
-                    by.x = c("date", "approx_layer"),
-                    by.y = c("date", "layer_group")) %>% 
-  rename(phyto_genera = genus_groups,
-         zoop_genera = genus,
-         zoop_lifestage = lifestage_cop)
-
-#hmm...leave phyto and zoop genera in separate columns or combine?
-#count vs density 
-#would retain both and then have lots of NAs...
-#thinking remain separate since "phyto" vs "zoop"
-#sort of like "chla" vs "temp" rather than "variable" vs "value"
-#when value has variable (ha) units
 
 #need to reshape so genera along top
 #will need to be very careful since phyto has density sum and zoop has count sum...
@@ -376,20 +381,6 @@ head(L4.AllDates)
 head(full_merge)
 
 # ----> reshape so genera along top
-
-full_merge_wide1 <- dcast(full_merge, 
-                          date + approx_layer + chla + temp + zoop_genera +
-                            zoop_lifestage + count_l_sum ~ phyto_genera, value.var = "density_genus_sum")
-
-#ah yes, should do this above so doesn't barf...
-
-head(phyto_env_merge_layers)
-
-phyto_env_wide <- dcast(phyto_env_merge_layers,
-                        date + depth + chla + temp + approx_layer ~ genus_groups, value.var = "density_genus_sum")
-
-#gah, even further back to avoid the unnecessary NAs...
-head(phy_dat_grouped)
 
 phy_dat_grouped_wide <- phy_dat_grouped %>% 
   select(-year, -month) %>% 
