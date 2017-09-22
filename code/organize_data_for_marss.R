@@ -349,59 +349,32 @@ phy_dat_grouped_wide <- phy_dat_grouped %>%
       mutate(genus_groups = paste(genus_groups, "density", sep = "_")) %>% 
       dcast(date + depth ~ genus_groups, value.var = "density_genus_sum") 
 
-# ----> merge env with phyto
+# ----> merge env with phyto and make approx layer groups
 
 phyto_env_wide_merge <- merge(env_merge, phy_dat_grouped_wide,
                               by = c("date", "depth"))
 
-# ----> check these out
+phyto_env_ready <- phyto_env_wide_merge %>% 
+                    mutate(approx_layer = ifelse(depth <= 10, "0-10", NA),
+                           approx_layer = ifelse(depth >10 & depth <= 25, "10-25", approx_layer),
+                           approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer)) 
 
-head(phyto_env_merge)
-head(pred_stack)
-
-#need to approximate layer group for env/phyto
-#well, well, well...I have no idea whether the layer groups are range inclusive
-#is 0-10 up to and including 10? is 0-10 <=10 and then 10-25 is >10?
-
-#for now, going to go with <=x and >x
-#since need 50 included as <=50...
-
-phyto_env_merge_layers <- phyto_env_merge %>% 
-  mutate(approx_layer = ifelse(depth <= 10, "0-10", NA),
-         approx_layer = ifelse(depth >10 & depth <= 25, "10-25", approx_layer),
-         approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer))
+phyto_env_ready <- phyto_env_ready[,c(1, 2, 17, 3:16)]
 
 
+# ----> reshape zoop so genera along top
 
+zoop_ready <- zoop_grouped %>% 
+                    mutate(genus_stage = paste(genus, lifestage_cop, sep = "_")) %>% 
+                    select(-genus, -lifestage_cop, - year) %>% 
+                    #put count/sum in name so distinguish from phyto density cols
+                    #probably need to come back and change sep so unique genus/stage/type sep
+                    mutate(genus_stage = paste(genus_stage, "count", sep = "_")) %>% 
+                    dcast(date + layer_group + upper_layer + lower_layer ~ genus_stage, value.var = "count_l_sum")
 
-
-
-
-
-#need to reshape so genera along top
-#will need to be very careful since phyto has density sum and zoop has count sum...
 
 #example MAR data
 data(L4.AllDates)
 head(L4.AllDates)
 
 head(full_merge)
-
-# ----> reshape so genera along top
-
-phy_dat_grouped_wide <- phy_dat_grouped %>% 
-  select(-year, -month) %>% 
-  dcast(date + depth ~ genus_groups, value.var = "density_genus_sum")
-
-head(pred_stack)
-
-pred_stack_wide <- pred_stack %>% 
-  mutate(genus_stage = paste(genus, lifestage_cop, sep = "_")) %>% 
-  select(-genus, -lifestage_cop) %>% 
-  dcast(date + layer_group + upper_layer + lower_layer ~ genus_stage, value.var = "count_l_sum")
-
-head(phy_dat_grouped_wide)
-head(pred_stack_wide)
-head(env_merge)
-
-
