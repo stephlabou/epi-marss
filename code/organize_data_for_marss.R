@@ -334,7 +334,6 @@ head(zoop_grouped)
 
 #merge and make long - NAs ok - can interpolate later
 
-#temp and chla (env vars)
 env_merge <- chla_match %>% 
         select(-month, -Year) %>% 
         merge(temp_match, by = c("date", "depth"), all = TRUE)
@@ -357,7 +356,8 @@ phyto_env_wide_merge <- merge(env_merge, phy_dat_grouped_wide,
 phyto_env_ready <- phyto_env_wide_merge %>% 
                     mutate(approx_layer = ifelse(depth <= 10, "0-10", NA),
                            approx_layer = ifelse(depth >10 & depth <= 25, "10-25", approx_layer),
-                           approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer)) 
+                           approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer)) %>% 
+                    rename(phyto_env_depth = depth)
 
 phyto_env_ready <- phyto_env_ready[,c(1, 2, 17, 3:16)]
 
@@ -370,7 +370,39 @@ zoop_ready <- zoop_grouped %>%
                     #put count/sum in name so distinguish from phyto density cols
                     #probably need to come back and change sep so unique genus/stage/type sep
                     mutate(genus_stage = paste(genus_stage, "count", sep = "_")) %>% 
-                    dcast(date + layer_group + upper_layer + lower_layer ~ genus_stage, value.var = "count_l_sum")
+                    dcast(date + layer_group + upper_layer + lower_layer ~ genus_stage, value.var = "count_l_sum") %>% 
+                    rename(zoop_upper_layer = upper_layer, zoop_lower_layer = lower_layer)
+
+##############################################
+###### Merge for MARSS dataset draft 1 #######
+##############################################
+
+head(phyto_env_ready)
+head(zoop_ready)
+
+# ----> full merge
+
+mardat <- merge(phyto_env_ready, zoop_ready,
+                by.x = c("date", "approx_layer"),
+                by.y = c("date", "layer_group"),
+                all = TRUE) %>% 
+          rename(layer = approx_layer) %>% 
+          #reorder columns
+          select(date, layer, zoop_upper_layer, zoop_lower_layer, phyto_env_depth,
+                 chla, temp, Achnanthes_density, Aulacoseira_density, Chroomonas_density,
+                 Chrysidalis_density, Dinobryon_density, Nitzchia_density,
+                 picoplankton_density, Romeria_density, Stephanodiscus_density,
+                 Synedra_density, unid_nano_density, unid_unid_density,
+                 Cyclops_adult_count, Epischura_adult_count,
+                 Epischura_copep_count, Epischura_naup_count) %>% 
+          #make date a date
+          mutate(date = as.Date(date)) %>% 
+          #make layer grouped ordered factor
+          mutate(layer = ordered(layer, levels = c("0-10", "10-25", "25-50")))
+                 
+head(mardat)
+str(mardat)
+summary(mardat)
 
 
 #example MAR data
