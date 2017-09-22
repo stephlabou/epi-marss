@@ -241,11 +241,7 @@ chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv
 # phy_newgen <- phy %>%
 #   rowwise() %>%
 #   mutate(genus_revised = unid_group(code))
-
-## ghastly results of system.time() on the above:
-##     user   system  elapsed 
-## 16078.62 10263.24 26544.29 
-
+#
 # ## Export to CSV so I don't have to rerun this every time.
 # write.csv(phy_newgen,
 #           "../data/phy_with_three_unidentified_groups.csv",
@@ -286,13 +282,10 @@ phy_dat_grouped <- phy_newgen %>%
 # filter(phy_newgen, date == "1999-11-04" & genus_revised == "Aulacoseira" & depth == 50)
 # filter(phy_dat_grouped, date == "1999-11-04" & genus_groups == "Aulacoseira" & depth == 50)
 
-head(phy_dat_grouped)
 
 ## ----> zoop groups
 
-head(zoop_fix_corr_units) #only Epischura - will need to get cyclops data from elsewhere
-
-zoop_grouped <- zoop_fix_corr_units %>% 
+zoop_grouped <- zoop_ready %>% 
         mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
         #for now, sticking with sequential depths to 50 m
         filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
@@ -331,13 +324,13 @@ temp_match <- temp %>%
         filter(depth <= 50)
 
 # ----> check out separate existing data frames
+
 head(chla_match)
 head(temp_match)
 head(phy_dat_grouped)
-head(epi_grouped)
-head(cyclop_grouped)
+head(zoop_grouped)
 
-# ----> merge - match date and depth
+# ----> merge chla/temp - match date and depth
 
 #merge and make long - NAs ok - can interpolate later
 
@@ -346,12 +339,20 @@ env_merge <- chla_match %>%
         select(-month, -Year) %>% 
         merge(temp_match, by = c("date", "depth"), all = TRUE)
 
-#merge with phyto
-phyto_env_merge <- phy_dat_grouped %>% 
-        select(-year, -month) %>% 
-        merge(env_merge, by = c("date", "depth"), all = TRUE) %>% 
-        select(date, depth, chla, temp, genus_groups, density_genus_sum)
+# ----> reshape phyto so genera along top
 
+phy_dat_grouped_wide <- phy_dat_grouped %>% 
+      select(-year, -month) %>% 
+      #would feel more comfortable moving forward if "density sum" or other was in name
+      #so we can keep track density vs count
+      #may need to change sep later (since _ in unid_ names...)
+      mutate(genus_groups = paste(genus_groups, "density", sep = "_")) %>% 
+      dcast(date + depth ~ genus_groups, value.var = "density_genus_sum") 
+
+# ----> merge env with phyto
+
+phyto_env_wide_merge <- merge(env_merge, phy_dat_grouped_wide,
+                              by = c("date", "depth"))
 
 # ----> check these out
 
@@ -369,6 +370,12 @@ phyto_env_merge_layers <- phyto_env_merge %>%
   mutate(approx_layer = ifelse(depth <= 10, "0-10", NA),
          approx_layer = ifelse(depth >10 & depth <= 25, "10-25", approx_layer),
          approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer))
+
+
+
+
+
+
 
 
 #need to reshape so genera along top
@@ -397,8 +404,4 @@ head(phy_dat_grouped_wide)
 head(pred_stack_wide)
 head(env_merge)
 
-#merge env with phyto
-
-phyto_env_wide_merge <- merge(phy_dat_grouped_wide, env_merge,
-                              by = c("date", "depth"))
 
