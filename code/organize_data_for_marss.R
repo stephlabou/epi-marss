@@ -1,10 +1,13 @@
 ## TO DO
 
+# [ ] are layer groups range inclusive? (0-10 group with <10 vs <=10)
+
+# [ ] what do we want to do about legitimate NA values?
+
+# ----> these turn out to be moot, since outside 50m range
 # [ ] layer mistakes, so count is negative or infinite
 #     [ ] what to do about NA layers 
 #     [ ] counts that are NA/NaN
-
-# [ ] are layer groups range inclusive? (0-10 group with <10 vs <=10)
 
 ###########################################
 ####  Prepare data for MARSS analysis  ####
@@ -170,7 +173,6 @@ zoop_ready <- zoop_fix_corr_units %>%
 #   summarize(n = n_distinct(date))
 
 #success
-
 
 #############################################
 ####  Average temperature data by month  ####
@@ -404,9 +406,9 @@ head(mardat)
 str(mardat)
 summary(mardat)
 
+write.csv(mardat, "../mar_dat.csv", row.names = FALSE)
 
-#example MAR data
-data(L4.AllDates)
-head(L4.AllDates)
 
-head(full_merge)
+# example MAR data
+# data(L4.AllDates)
+# head(L4.AllDates)
