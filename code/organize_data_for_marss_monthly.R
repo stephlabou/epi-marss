@@ -111,59 +111,20 @@ zoop_fix_corr_units <- zoop_fix %>%
   ## Filter out data that's listed as being from 1908 -- this is clearly a mistake
   filter(as.Date(date) >= as.Date("1945-01-01"))
 
-# zoop_fix %>% filter(!(upper_layer < lower_layer)) %>% str() #106
-# zoop_fix %>% filter(!(upper_layer < lower_layer)) %>% select(upper_layer, lower_layer) %>% unique()
-# upper_layer lower_layer
-# 1         250         150
-# 2         150         150
-
-zoop_fix %>% filter(is.na(upper_layer) | is.na(lower_layer))
-
-filter(fulldat, kod == 10 & is.na(date) & genus == "Epischura" & species == "baicalensis")
-#ok, there are REAL instances where date is missing or layers are missing 
-
-## count_l has negatives (when upper layer > lower layer), and Inf (one one instance, where upper layer = lower layer)
-# filter(zoop_fix_corr_units, count_l < 0) #12 instances
-# filter(zoop_fix_corr_units, is.infinite(count_l)) #1 instance
-
-## For now, filter to keep only positive counts
-zoop_fix_corr_units <- zoop_fix_corr_units %>% 
-                        mutate(suspicious = ifelse(count_l < 0 | is.infinite(count_l), "suspicious", "normal")) %>% 
-                        filter(suspicious != "suspicious")
-                        #filter(suspicious == "normal")
-
-# zoop_fix_corr_units %>% group_by(suspicious) %>% summarize(n=length(date)) %>% as.data.frame()
-# suspicious      n
-# 1     normal 579807
-# 2 suspicious     13
-# 3       <NA>    159
-
-filter(zoop_fix, date %in% c("1999-12-26", "1974-04-19") & (is.na(upper_layer) | upper_layer == 150) & (is.na(lower_layer) | lower_layer == 150))
-filter(zoop_fix_corr_units, date %in% c("1999-12-26", "1974-04-19") & 
-         (is.na(upper_layer) | upper_layer == 150) & (is.na(lower_layer) | lower_layer == 150)) %>% 
-  head()
-#goes from 579979 to 579807
-#NA comes from layers being NA and NaN comes from layers being same so 0/0 = NaN
-
-#have instances of NA, need to decide what to do with those...
-#and some NaN - all from NA layers or 150-150
-#NaN is when count is zero and layer diff is also 0 --> NaN
-
-# filter(zoop_fix, date == "1999-12-26" & upper_layer == 150 & lower_layer == 150)
-# filter(zoop_fix_corr_units, date == "1974-04-19" & is.na(upper_layer) & is.na(lower_layer))
-
-#Thinking without a layer and a count, it's just not usable, should filter out...
+## For now, can ignore the layer mismatch issue, since they call outside our depth range of interest
+## Other issues: instances where date or layer range is missing (real NA in orig data)
+## Going to exclude these, since without date or depth, data is not useful to us
 
 #################################
 ####  View lifestage groups  ####
 #################################
 
-# zoop_fix_corr_units %>% 
-#   select(genus, lifestage_cop) %>% 
-#   unique() %>% 
+# zoop_fix_corr_units %>%
+#   select(genus, lifestage_cop) %>%
+#   unique() %>%
 #   arrange(genus, lifestage_cop)
-# zoop_fix_corr_units %>% 
-#   group_by(genus, lifestage_cop) %>% 
+# zoop_fix_corr_units %>%
+#   group_by(genus, lifestage_cop) %>%
 #   summarize(n = n_distinct(date))
   
 #keep only adult cyclops
@@ -171,19 +132,17 @@ filter(zoop_fix_corr_units, date %in% c("1999-12-26", "1974-04-19") &
 zoop_ready <- zoop_fix_corr_units %>% 
               filter(ifelse(genus == "Cyclops", lifestage_cop == "adult", lifestage_cop %in% c("adult", "copep", "naup")))   
 
-# zoop_ready %>% 
-#   select(genus, lifestage_cop) %>% 
-#   unique() %>% 
+# zoop_ready %>%
+#   select(genus, lifestage_cop) %>%
+#   unique() %>%
 #   arrange(genus, lifestage_cop)
-# zoop_ready %>% 
-#   group_by(genus, lifestage_cop) %>% 
+# zoop_ready %>%
+#   group_by(genus, lifestage_cop) %>%
 #   summarize(n = n_distinct(date))
 
-#success
-
-#############################################
-####  Average temperature data by month  ####
-#############################################
+#######################################################
+####  Average temperature data by month and depth  ####
+#######################################################
 
 temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv"),
                  stringsAsFactors = FALSE)
@@ -195,9 +154,9 @@ temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv
 #   group_by(monthyear) %>%
 #   summarize(temp = mean(temp, na.rm = TRUE))
 
-#############################################
-####  Average chlorophyll data by month  ####
-#############################################
+######################################################
+####  Average chlorophyll data by month and depth ####
+######################################################
 
 chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv"),
                  stringsAsFactors = FALSE)
