@@ -128,15 +128,39 @@ zoop_fix_corr_units <- zoop_fix %>%
   ## mistake
   filter(as.Date(date) >= as.Date("1945-01-01"))
 
+# zoop_fix %>% filter(!(upper_layer < lower_layer)) %>% str() #106
+# zoop_fix %>% filter(!(upper_layer < lower_layer)) %>% select(upper_layer, lower_layer) %>% unique()
+# upper_layer lower_layer
+# 1         250         150
+# 2         150         150
+
+zoop_fix %>% filter(is.na(upper_layer) | is.na(lower_layer))
+
+filter(fulldat, kod == 10 & is.na(date) & genus == "Epischura" & species == "baicalensis")
+#ok, there are REAL instances where date is missing or layers are missing 
+
 ## count_l has negatives (when upper layer > lower layer), and Inf (one one instance, where upper layer = lower layer)
-# filter(zoop_fix_corr_units, count_l < 0)
-# filter(zoop_fix_corr_units, is.infinite(count_l))
+# filter(zoop_fix_corr_units, count_l < 0) #12 instances
+# filter(zoop_fix_corr_units, is.infinite(count_l)) #1 instance
 
 ## For now, filter to keep only positive counts
 zoop_fix_corr_units <- zoop_fix_corr_units %>% 
                         mutate(suspicious = ifelse(count_l < 0 | is.infinite(count_l), "suspicious", "normal")) %>% 
                         filter(suspicious != "suspicious")
                         #filter(suspicious == "normal")
+
+# zoop_fix_corr_units %>% group_by(suspicious) %>% summarize(n=length(date)) %>% as.data.frame()
+# suspicious      n
+# 1     normal 579807
+# 2 suspicious     13
+# 3       <NA>    159
+
+# filter(zoop_fix, date %in% c("1999-12-26", "1974-04-19") & (is.na(upper_layer) | upper_layer == 150) & (is.na(lower_layer) | lower_layer == 150))
+# filter(zoop_fix_corr_units, date %in% c("1999-12-26", "1974-04-19") & 
+#          (is.na(upper_layer) | upper_layer == 150) & (is.na(lower_layer) | lower_layer == 150)) %>% 
+#   head()
+#goes from 579979 to 579807
+#NA comes from layers being NA and NaN comes from layers being same so 0/0 = NaN
 
 #have instances of NA, need to decide what to do with those...
 #and some NaN - all from NA layers or 150-150
@@ -406,7 +430,7 @@ head(mardat)
 str(mardat)
 summary(mardat)
 
-write.csv(mardat, "../mar_dat.csv", row.names = FALSE)
+write.csv(mardat, "../data/mar_dat.csv", row.names = FALSE)
 
 
 # example MAR data
