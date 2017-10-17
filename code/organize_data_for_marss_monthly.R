@@ -256,94 +256,39 @@ phy_monthly <- phy_newgen %>%
                   as.data.frame()
 
 
+######################################################
+#### Combine monthly data frames for MARSS format ####
+######################################################
 
+# ----> reshape phyto and zoop so genera along top
 
+phy_monthly_wide <- phy_monthly %>% 
+                        #would feel more comfortable moving forward if "density sum" or other was in name
+                        #so we can keep track density vs count
+                        #may need to change sep later (since _ in unid_ names...)
+                        mutate(genus_groups = paste(genus_groups, "density", sep = "_")) %>% 
+                        dcast(year + month ~ genus_groups, value.var = "density_genus_sum") 
 
+zoop_monthly_wide <- zoop_monthly %>% 
+                      mutate(genus_stage = paste(genus, lifestage_cop, sep = "_")) %>% 
+                      select(-genus, -lifestage_cop) %>% 
+                      #put count/sum in name so distinguish from phyto density cols
+                      #probably need to come back and change sep so unique genus/stage/type sep
+                      mutate(genus_stage = paste(genus_stage, "count", sep = "_")) %>% 
+                      dcast(year + month ~ genus_stage, value.var = "count_l_sum") 
 
-# ----> check out separate existing data frames
+# ----> merge chla/temp/phyto/zoop
 
-head(chla_match)
-head(temp_match)
-head(phy_dat_grouped)
-head(zoop_grouped)
+head(chla_monthly)
+head(temp_monthly)
+head(zoop_monthly_wide)
+head(phy_monthly_wide)
 
-# ----> merge chla/temp - match date and depth
+dat_full <- temp_monthly %>% 
+            merge(chla_monthly, by = c("year", "month"), all = TRUE) %>% 
+            merge(zoop_monthly_wide, by = c("year", "month"), all = TRUE) %>% 
+            merge(phy_monthly_wide, by = c("year", "month"), all = TRUE)
 
-#merge and make long - NAs ok - can interpolate later
+# ----> mwrite to csv for later use
+write.csv(dat_full, "../data/mar_dat.csv", row.names = FALSE)
 
-env_merge <- chla_match %>% 
-        select(-month, -Year) %>% 
-        merge(temp_match, by = c("date", "depth"), all = TRUE)
-
-# ----> reshape phyto so genera along top
-
-phy_dat_grouped_wide <- phy_dat_grouped %>% 
-      select(-year, -month) %>% 
-      #would feel more comfortable moving forward if "density sum" or other was in name
-      #so we can keep track density vs count
-      #may need to change sep later (since _ in unid_ names...)
-      mutate(genus_groups = paste(genus_groups, "density", sep = "_")) %>% 
-      dcast(date + depth ~ genus_groups, value.var = "density_genus_sum") 
-
-# ----> merge env with phyto and make approx layer groups
-
-phyto_env_wide_merge <- merge(env_merge, phy_dat_grouped_wide,
-                              by = c("date", "depth"))
-
-phyto_env_ready <- phyto_env_wide_merge %>% 
-                    mutate(approx_layer = ifelse(depth <= 10, "0-10", NA),
-                           approx_layer = ifelse(depth >10 & depth <= 25, "10-25", approx_layer),
-                           approx_layer = ifelse(depth > 25 & depth <= 50, "25-50", approx_layer)) %>% 
-                    rename(phyto_env_depth = depth)
-
-phyto_env_ready <- phyto_env_ready[,c(1, 2, 17, 3:16)]
-
-
-# ----> reshape zoop so genera along top
-
-zoop_ready <- zoop_grouped %>% 
-                    mutate(genus_stage = paste(genus, lifestage_cop, sep = "_")) %>% 
-                    select(-genus, -lifestage_cop, - year) %>% 
-                    #put count/sum in name so distinguish from phyto density cols
-                    #probably need to come back and change sep so unique genus/stage/type sep
-                    mutate(genus_stage = paste(genus_stage, "count", sep = "_")) %>% 
-                    dcast(date + layer_group + upper_layer + lower_layer ~ genus_stage, value.var = "count_l_sum") %>% 
-                    rename(zoop_upper_layer = upper_layer, zoop_lower_layer = lower_layer)
-
-##############################################
-###### Merge for MARSS dataset draft 1 #######
-##############################################
-
-head(phyto_env_ready)
-head(zoop_ready)
-
-# ----> full merge
-
-mardat <- merge(phyto_env_ready, zoop_ready,
-                by.x = c("date", "approx_layer"),
-                by.y = c("date", "layer_group"),
-                all = TRUE) %>% 
-          rename(layer = approx_layer) %>% 
-          #reorder columns
-          select(date, layer, zoop_upper_layer, zoop_lower_layer, phyto_env_depth,
-                 chla, temp, Achnanthes_density, Aulacoseira_density, Chroomonas_density,
-                 Chrysidalis_density, Dinobryon_density, Nitzchia_density,
-                 picoplankton_density, Romeria_density, Stephanodiscus_density,
-                 Synedra_density, unid_nano_density, unid_unid_density,
-                 Cyclops_adult_count, Epischura_adult_count,
-                 Epischura_copep_count, Epischura_naup_count) %>% 
-          #make date a date
-          mutate(date = as.Date(date)) %>% 
-          #make layer grouped ordered factor
-          mutate(layer = ordered(layer, levels = c("0-10", "10-25", "25-50")))
-                 
-head(mardat)
-str(mardat)
-summary(mardat)
-
-write.csv(mardat, "../data/mar_dat.csv", row.names = FALSE)
-
-
-# example MAR data
-# data(L4.AllDates)
-# head(L4.AllDates)
