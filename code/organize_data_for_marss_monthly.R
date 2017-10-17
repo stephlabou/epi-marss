@@ -1,26 +1,23 @@
-###########################################
-####  Prepare data for MARSS analysis  ####
-###########################################
-
 ## TO DO
 
 # ----> redone to use monthly averages
+# limited to since 1975, 0-50 meters
+
+# ----> remaining issues
 
 # [ ] are layer groups range inclusive? (0-10 group with <10 vs <=10)
 
 # [ ] what do we want to do about legitimate NA values?
 #   ----> see agg_depth_notes.doc
 
-# ----> these turn out to be moot, since outside 50m range
-# [ ] layer mistakes, so count is negative or infinite
-#     [ ] what to do about NA layers 
-#     [ ] counts that are NA/NaN
 
-#############################################
-####  Packages, working directory, etc.  ####
-#############################################
+###########################################
+####  Prepare data for MARSS analysis  ####
+###########################################
 
 ## We are using data since 1975 and above 50m (inclusive)
+
+## Temperature, chla, phyto, and zoop (Epischura/adult cyclops)
 
 #From SH, groups are:
 
@@ -43,6 +40,10 @@
 
 #(1-12 are phyto, 13-16 are zoop)
 
+#############################################
+####  Packages, working directory, etc.  ####
+#############################################
+
 ## Load packages
 library(dplyr)
 library(lubridate)
@@ -53,6 +54,47 @@ library(MARSS)
 ## Directory of the long-term data Subversion repository. UPDATE THIS to run the
 ## code on your own machine.
 dir <- "D:/Labou/Baikal/baikal/Longterm_data/"
+
+#######################################################
+####  Average temperature data by month and depth  ####
+#######################################################
+
+temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv"),
+                 stringsAsFactors = FALSE)
+
+# Want monthly average across depths 0-50m
+temp_small <- temp %>% 
+            mutate(year = year(as.Date(date)),
+                   month = month(as.Date(date))) 
+
+#aggregate across depths by month and year
+temp_monthly <- temp_small %>% 
+                group_by(year, month) %>% 
+                summarize(temp_month_050depth_avg = mean(temp, na.rm = TRUE)) %>% 
+                as.data.frame()
+
+
+######################################################
+####  Average chlorophyll data by month and depth ####
+######################################################
+
+chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv"),
+                 stringsAsFactors = FALSE)
+
+# Want monthly average across depths 0-50m
+chla_small <- chla %>% 
+  #keep only since 1975
+  filter(Year >= 1975) %>% 
+  #50 m and above
+  filter(depth >= 50) %>% 
+  rename(year = Year)
+
+#aggregate across depths by month and year
+chla_monthly <- chla_small %>% 
+  group_by(year, month) %>% 
+  summarize(chla_month_050depth_avg = mean(chla, na.rm = TRUE)) %>% 
+  as.data.frame()
+
 
 ########################################################
 ##################  Load zoop data  ####################
@@ -67,9 +109,7 @@ colnames(fulldat) <- tolower(colnames(fulldat))
 key <- read.csv(paste0(dir, "zoo/data/key.csv"), stringsAsFactors = FALSE)
 colnames(key) <- tolower(colnames(key))
 
-######################################################################
 #########  Keep only Epischura baicalensis & adult Cyclops  ##########
-######################################################################
 
 ## Codes that represent Epischura/Cyclops non-double counts according to Derek's key:
 epi_key <- filter(key, genus == "Epischura" & species == "baicalensis"& doublecount %in% c("N", "M")) %>% .$kod
@@ -86,9 +126,7 @@ zoop <- filter(fulldat, kod %in% keep_key) %>%
 #there are NA values which are useless...so refiltering to keep only Epi and Cyclops
 zoop_fix <- filter(zoop, genus %in% c("Epischura", "Cyclops"))
 
-###############################
 ####  Convert count units  ####
-###############################
 
 ## Count is reported as individuals * 1000 / m2. To convert to
 ## individuals/liter, use the following function:
@@ -115,9 +153,7 @@ zoop_fix_corr_units <- zoop_fix %>%
 ## Other issues: instances where date or layer range is missing (real NA in orig data)
 ## Going to exclude these, since without date or depth, data is not useful to us
 
-#################################
 ####  View lifestage groups  ####
-#################################
 
 # zoop_fix_corr_units %>%
 #   select(genus, lifestage_cop) %>%
@@ -140,33 +176,6 @@ zoop_ready <- zoop_fix_corr_units %>%
 #   group_by(genus, lifestage_cop) %>%
 #   summarize(n = n_distinct(date))
 
-#######################################################
-####  Average temperature data by month and depth  ####
-#######################################################
-
-temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv"),
-                 stringsAsFactors = FALSE)
-
-# temp_month <- temp %>%
-#   ## Create column of months
-#   mutate(monthyear = floor_date(as.Date(date), "month")) %>%
-#   ## Average temp by month
-#   group_by(monthyear) %>%
-#   summarize(temp = mean(temp, na.rm = TRUE))
-
-######################################################
-####  Average chlorophyll data by month and depth ####
-######################################################
-
-chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv"),
-                 stringsAsFactors = FALSE)
-
-# chla_month <- chla %>%
-#   ## Create column of months
-#   mutate(monthyear = floor_date(as.Date(date), "month")) %>%
-#   ## Average chla by month
-#   group_by(monthyear) %>%
-#   summarize(chla = mean(chla, na.rm = TRUE))
 
 ##############################################
 ######  Read in and organize phyto data ######
