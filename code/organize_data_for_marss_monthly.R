@@ -55,9 +55,9 @@ library(MARSS)
 ## code on your own machine.
 dir <- "D:/Labou/Baikal/baikal/Longterm_data/"
 
-#######################################################
-####  Average temperature data by month and depth  ####
-#######################################################
+############################################
+####  Average temperature data by month ####
+############################################
 
 temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv"),
                  stringsAsFactors = FALSE)
@@ -78,7 +78,7 @@ temp_monthly <- temp_small %>%
 
 
 ######################################################
-####  Average chlorophyll data by month and depth ####
+####  Aggregate/average chlorophyll data by month ####
 ######################################################
 
 chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv"),
@@ -98,9 +98,9 @@ chla_monthly <- chla_small %>%
                 as.data.frame()
 
 
-########################################################
-##################  Load zoop data  ####################
-########################################################
+##################################################
+#### Wrangle zoop data and aggregate by month ####
+##################################################
 
 ## Note: this is the zooplankton data with zeroes already in place when species codes weren't observed
 fulldat <- read.csv(paste0(dir, "zoo/data/zoopzeroskey_alldepths.csv"),
@@ -181,9 +181,9 @@ zoop_monthly <- zoop_ready %>%
               as.data.frame()
 
 
-##############################################
-######  Read in and organize phyto data ######
-##############################################
+###################################################
+#### Wrangle phyto data and aggregate by month ####
+###################################################
 
 #### RETAINED FROM ORIG ####
 # phy <- read.csv(paste0(dir, "phyto/Baikal_Phyto_zeroesInc_2countRemoved_KeyUpdate_20120728.csv"), stringsAsFactors = FALSE)
