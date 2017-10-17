@@ -1,15 +1,8 @@
-## TO DO
-
 # ----> redone to use monthly averages
 # limited to since 1975, 0-50 meters
 
-# ----> remaining issues
-
-# [ ] are layer groups range inclusive? (0-10 group with <10 vs <=10)
-
 # [ ] what do we want to do about legitimate NA values?
 #   ----> see agg_depth_notes.doc
-
 
 ###########################################
 ####  Prepare data for MARSS analysis  ####
@@ -288,6 +281,10 @@ dat_full <- temp_monthly %>%
             merge(chla_monthly, by = c("year", "month"), all = TRUE) %>% 
             merge(zoop_monthly_wide, by = c("year", "month"), all = TRUE) %>% 
             merge(phy_monthly_wide, by = c("year", "month"), all = TRUE)
+
+str(dat_full)
+summary(dat_full)
+
 
 # ----> mwrite to csv for later use
 write.csv(dat_full, "../data/mar_dat.csv", row.names = FALSE)
