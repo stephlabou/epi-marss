@@ -65,12 +65,15 @@ temp <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/temp_cleaned.csv
 # Want monthly average across depths 0-50m
 temp_small <- temp %>% 
             mutate(year = year(as.Date(date)),
-                   month = month(as.Date(date))) 
+                   month = month(as.Date(date))) %>% 
+            #keep since 1975, <= 50m
+            filter(year >= 1975 & depth <= 50)
+            
 
 #aggregate across depths by month and year
 temp_monthly <- temp_small %>% 
                 group_by(year, month) %>% 
-                summarize(temp_month_050depth_avg = mean(temp, na.rm = TRUE)) %>% 
+                summarize(temp_050depth_avg = mean(temp, na.rm = TRUE)) %>% 
                 as.data.frame()
 
 
@@ -83,17 +86,16 @@ chla <- read.csv(paste0(dir, "temp_chl_secchi_wind/cleaned_data/chla_cleaned.csv
 
 # Want monthly average across depths 0-50m
 chla_small <- chla %>% 
-  #keep only since 1975
-  filter(Year >= 1975) %>% 
-  #50 m and above
-  filter(depth >= 50) %>% 
-  rename(year = Year)
+            #keep only since 1975, 50m and above
+            filter(Year >= 1975 & depth <= 50) %>% 
+            rename(year = Year)
 
 #aggregate across depths by month and year
 chla_monthly <- chla_small %>% 
-  group_by(year, month) %>% 
-  summarize(chla_month_050depth_avg = mean(chla, na.rm = TRUE)) %>% 
-  as.data.frame()
+                group_by(year, month) %>% 
+                summarize(chla_050depth_avg = mean(chla, na.rm = TRUE),
+                          chla_050depth_sum = sum(chla, na.rm = TRUE)) %>% 
+                as.data.frame()
 
 
 ########################################################
@@ -109,7 +111,7 @@ colnames(fulldat) <- tolower(colnames(fulldat))
 key <- read.csv(paste0(dir, "zoo/data/key.csv"), stringsAsFactors = FALSE)
 colnames(key) <- tolower(colnames(key))
 
-#########  Keep only Epischura baicalensis & adult Cyclops  ##########
+## ----> Keep only Epischura baicalensis & adult Cyclops 
 
 ## Codes that represent Epischura/Cyclops non-double counts according to Derek's key:
 epi_key <- filter(key, genus == "Epischura" & species == "baicalensis"& doublecount %in% c("N", "M")) %>% .$kod
@@ -126,7 +128,7 @@ zoop <- filter(fulldat, kod %in% keep_key) %>%
 #there are NA values which are useless...so refiltering to keep only Epi and Cyclops
 zoop_fix <- filter(zoop, genus %in% c("Epischura", "Cyclops"))
 
-####  Convert count units  ####
+## ----> Convert count units  
 
 ## Count is reported as individuals * 1000 / m2. To convert to
 ## individuals/liter, use the following function:
@@ -153,28 +155,30 @@ zoop_fix_corr_units <- zoop_fix %>%
 ## Other issues: instances where date or layer range is missing (real NA in orig data)
 ## Going to exclude these, since without date or depth, data is not useful to us
 
-####  View lifestage groups  ####
 
-# zoop_fix_corr_units %>%
-#   select(genus, lifestage_cop) %>%
-#   unique() %>%
-#   arrange(genus, lifestage_cop)
-# zoop_fix_corr_units %>%
-#   group_by(genus, lifestage_cop) %>%
-#   summarize(n = n_distinct(date))
-  
 #keep only adult cyclops
 
 zoop_ready <- zoop_fix_corr_units %>% 
               filter(ifelse(genus == "Cyclops", lifestage_cop == "adult", lifestage_cop %in% c("adult", "copep", "naup")))   
 
-# zoop_ready %>%
-#   select(genus, lifestage_cop) %>%
-#   unique() %>%
-#   arrange(genus, lifestage_cop)
-# zoop_ready %>%
-#   group_by(genus, lifestage_cop) %>%
-#   summarize(n = n_distinct(date))
+
+## ----> keep only since 1975, <= 50m, aggregate to monthly 
+
+#using the sequential sampling depths
+#then aggregates ACROSS the 3 sequential layers
+
+zoop_monthly <- zoop_ready %>% 
+              mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
+              #keep sequential sampling depths to 50 m
+              filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
+              mutate(layer_group = ordered(layer_group, levels = c("0-10", "10-25", "25-50"))) %>% 
+              #keep only since 1975
+              mutate(year = year(as.Date(date)),
+                     month = month(as.Date(date))) %>% 
+              filter(year >= 1975) %>% 
+              group_by(year, month, genus, lifestage_cop) %>% 
+              summarize(count_l_sum = sum(count_l, na.rm = TRUE)) %>% 
+              as.data.frame()
 
 
 ##############################################
@@ -224,12 +228,10 @@ zoop_ready <- zoop_fix_corr_units %>%
 #           "../data/phy_with_three_unidentified_groups.csv",
 #           row.names = FALSE)
 
+## ----> read in phyto data with unidentified groups
+
 phy_newgen <- read.csv("../data/phy_with_three_unidentified_groups.csv",
                        stringsAsFactors = FALSE)
-
-##############################################
-##### Organize groups (zoop, phyto, env) #####
-##############################################
 
 ## ----> phyto groups
 
@@ -239,66 +241,24 @@ phyto_groups <- c("Cyanodictyon", "Synechocystis", "unid_pico",
                   "Synedra", "Achnanthes", "Aulacoseira", "unid_unid")
 
 
-phy_dat_grouped <- phy_newgen %>% 
-      select(-genus) %>% 
-      #keep only genera of interest
-      filter(genus_revised %in% phyto_groups) %>% 
-      #make new merged group
-      mutate(genus_groups = ifelse(genus_revised %in% c("Cyanodictyon", "Synechocystis", "unid_pico"),
-                                   "picoplankton", genus_revised)) %>% 
-      #already limited to 1975; limit to <= 50 meters
-      filter(depth <= 50) %>% 
-      #aggregate within date, depth, and genus group
-      group_by(year, month, date, depth, genus_groups) %>% 
-      summarize(density_genus_sum = sum(density)) %>% 
-      as.data.frame()
-
-# filter(phy_newgen, date == "1975-01-07" & genus_revised == "Nitzchia" & depth == 20)
-# filter(phy_dat_grouped, date == "1975-01-07" & genus_groups == "Nitzchia" & depth == 20)
-# 
-# filter(phy_newgen, date == "1999-11-04" & genus_revised == "Aulacoseira" & depth == 50)
-# filter(phy_dat_grouped, date == "1999-11-04" & genus_groups == "Aulacoseira" & depth == 50)
+phy_monthly <- phy_newgen %>% 
+                  select(-genus) %>% 
+                  #keep only genera of interest
+                  filter(genus_revised %in% phyto_groups) %>% 
+                  #make new merged group
+                  mutate(genus_groups = ifelse(genus_revised %in% c("Cyanodictyon", "Synechocystis", "unid_pico"),
+                                               "picoplankton", genus_revised)) %>% 
+                  #already limited to 1975; limit to <= 50 meters
+                  filter(depth <= 50) %>% 
+                  #aggregate within date, depth, and genus group to get total density
+                  group_by(year, month, genus_groups) %>% 
+                  summarize(density_genus_sum = sum(density)) %>% 
+                  as.data.frame()
 
 
-## ----> zoop groups
-
-zoop_grouped <- zoop_ready %>% 
-        mutate(layer_group = paste(upper_layer, lower_layer, sep = "-")) %>% 
-        #for now, sticking with sequential depths to 50 m
-        filter(layer_group %in% c("0-10", "10-25", "25-50")) %>% 
-        mutate(layer_group = ordered(layer_group, levels = c("0-10", "10-25", "25-50"))) %>% 
-        #group and aggregate counts within Epi lifestages (adult, copep, naup)
-        group_by(date, layer_group, upper_layer, lower_layer, genus, lifestage_cop) %>% 
-        summarize(count_l_sum = sum(count_l)) %>% 
-        #keep only since 1975
-        mutate(year = year(as.Date(date))) %>% 
-        filter(year >= 1975) %>% 
-        as.data.frame()
-
-# filter(zoop_fix_corr_units, date == "1975-01-07" & lifestage_cop == "naup" & upper_layer == 0 & lower_layer == 10)
-# filter(zoop_grouped, date == "1975-01-07" & lifestage_cop == "naup" & upper_layer == 0 & lower_layer == 10)
-# 
-# filter(zoop_fix_corr_units, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25)
-# filter(zoop_grouped, date == "2003-12-06" & lifestage_cop == "copep" & upper_layer == 10 & lower_layer == 25) 
-
-# filter(zoop_fix_corr_units, date == "1975-03-10" & lifestage_cop == "adult" & upper_layer == 0 & lower_layer == 10)
-# filter(zoop_grouped, date == "1975-03-10" & lifestage_cop == "adult" & upper_layer == 0 & lower_layer == 10)
-# 
-# filter(zoop_fix_corr_units, date == "1994-11-09" & lifestage_cop == "adult" & upper_layer == 25 & lower_layer == 50)
-# filter(zoop_grouped, date == "1994-11-09" & lifestage_cop == "adult" & upper_layer == 25 & lower_layer == 50)
 
 
-# ----> limit chla and temp to 1975 and 50m
 
-chla_match <- chla %>% 
-        #looks like chla already all since 1975...
-        #but just in case...
-        filter(year(as.Date(date))>=1975) %>% 
-        filter(depth <= 50)
-
-temp_match <- temp %>% 
-        filter(year(as.Date(date))>=1975) %>% 
-        filter(depth <= 50)
 
 # ----> check out separate existing data frames
 
