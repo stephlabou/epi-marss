@@ -1,8 +1,9 @@
 # README
-
-Last updated by Kara Woo on May 31, 2016
+Last updated by Stephanie Labou on November 17, 2017
 
 ---
+
+# V1 - Kara Woo
 
 This code is the beginnings of preparing the long-term Lake Baikal plankton data
 for analysis with
@@ -93,3 +94,18 @@ The vast majority are bacteria.
   that still typically have all relevant data types (temperature, chlorophyll,
   etc.).
 * Decide on which phytoplankton taxa to include in the model.
+
+# V2 - Stephanie Labou
+	
+Depth resolution: Data has been limited to 0-50m (inclusive). For temperature, I have included the average temperature 0-50m. For chla, I have both the average and sum total for 0-50m. For plankton, values are sums within 0-50m. Zooplankton are provided from depth ranges, so reported values are total zoop summed over 0-10, 10-25, and 25-50m. 
+Temporal resolution: Values were aggregated to month within years. Monthly data was then subset to only periods when all data is available: 1979-1999 (primarily limited by phytos, which only go through 1999).
+
+NAs replacement: 
+* Single NA: retained
+* Two or more sequential NA: replaced by monthly average for that variable across whole time period
+
+Replacing zeros:
+* For each variable, I replaced zeros with half the minimum non-zero value for that value, plus a random number between 0 and 1. 
+* Note: each variable received a different random number and random number remained consistent within variable. Therefore, within a variable, all zero values became the same non-zero value.
+* Note: this also means that some cases, an NA value was appropriately replaced with a zero (monthly avg) which was then replaced appropriately with a non-zero. Should be fine, but somewhat squishy, so making aware.
+
