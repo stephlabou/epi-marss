@@ -97,7 +97,10 @@ The vast majority are bacteria.
 
 # V2 - Stephanie Labou
 	
-Depth resolution: Data has been limited to 0-50m (inclusive). For temperature, I have included the average temperature 0-50m. For chla, I have both the average and sum total for 0-50m. For plankton, values are sums within 0-50m. Zooplankton are provided from depth ranges, so reported values are total zoop summed over 0-10, 10-25, and 25-50m. 
+Depth resolution: Data has been limited to 0-50m (inclusive). For temperature, I have included the average temperature 0-50m. For chla, I have both the average and sum total for 0-50m. Finer depth resolution is available for these variables, if needed.
+
+For plankton, values are sums within 0-50m. Units are cells/liter. Zooplankton are provided from depth ranges, so reported values are total zoop (individuals/liter) summed over 0-10, 10-25, and 25-50m. 
+
 Temporal resolution: Values were aggregated to month within years. Monthly data was then subset to only periods when all data is available: 1979-1999 (primarily limited by phytos, which only go through 1999).
 
 NAs replacement: 
@@ -109,3 +112,24 @@ Replacing zeros:
 * Note: each variable received a different random number and random number remained consistent within variable. Therefore, within a variable, all zero values became the same non-zero value.
 * Note: this also means that some cases, an NA value was appropriately replaced with a zero (monthly avg) which was then replaced appropriately with a non-zero. Should be fine, but somewhat squishy, so making aware.
 
+## Current scripts
+
+1. exploratory.R 
+  +first exploratory script (combination of Woo and Labou code)
+  +focuses on temporal and depth coverage
+
+2. organize_data_for_marss_monthly.R
+  +data wrangling script
+  +takes raw(est) inputs, aggregates to monthly
+  +outputs "mar_dat.csv"
+
+3. subset_monthly_data.R
+  +data cleaning/subsetting script, also some QA/QC checks
+  +deals with NAs and zero values
+  +sources rle_updated.R and tag_runs_incl_na.R from Functions folder
+  +inputs "mar_dat.csv"; outputs "fixed_mar_dat.csv"
+  
+4. run_marss_1.R
+  +first pass at MARSS model
+  +inputs "fixed_mar_dat.csv"
+  +first pass, probably incomplete

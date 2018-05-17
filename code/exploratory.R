@@ -2,8 +2,6 @@
 ############  EXPLORATORY  ################
 ###########################################
 
-## from orig file "epi_data_for_marss.R" (preserved for posterity)
-
 library("dplyr")
 library("ggplot2")
 library("lubridate")
@@ -205,8 +203,6 @@ epi_depth_abund <- epi_corr_units %>%
 
 #want to tag ones that are sequential vs overlapping
 #e.g., 0-150 is overlapping whereas 0-10, 10-25, etc. is sequential
-#and the ones that are negative or Inf
-#grrr I know I did this before, stupid hard drive wipe...
 
 sequential <- c("0-10", "10-25", "25-50", "50-100", "100-150", "150-250", "250-500")
 
@@ -231,8 +227,7 @@ epi_corr_units %>%
 ## This issue comes up on on 2002-06-13. Look at the original data for that date:
 unique(epi[epi$date == as.Date("2002-06-13"), c("date", "upper_layer", "lower_layer")])
 ## Okay, it looks like the upper and lower layer got switched. There is data
-## from 100 to 150 and 250 to 500, so there should be 150 to 250. Ughhhhhh. And
-## no one caught this before. Sigh.
+## from 100 to 150 and 250 to 500, so there should be 150 to 250.
 
 ## Another problem is a row where the upper and lower layers are both 150.
 
@@ -399,7 +394,7 @@ phy_sml <- phy_newgen %>%
 ## List of all genera that at some point constitute >=10% of abundance
 genera <- unique(phy_sml$genus_revised)
 
-## Top 10 winter and summer genera above 150 m
+## KW: Top 10 winter and summer genera above 150 m
 #SL: adjusted to be 50 m - match lowest temp depth
 phy_final <- phy_newgen %>%
   filter(genus_revised %in% genera &
@@ -663,6 +658,4 @@ cyclop_corr_units %>%
   mutate(year = year(as.Date(date, format = "%Y-%m-%d"))) %>% 
   group_by(date) %>% 
   summarize(n = n_distinct(lifestage_cop)) 
-
-
 

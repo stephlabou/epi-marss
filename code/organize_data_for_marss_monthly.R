@@ -1,8 +1,9 @@
-# ----> redone to use monthly averages
+# ----> using monthly averages
 # limited to since 1975, 0-50 meters
 
-# [ ] what do we want to do about legitimate NA values?
-#   ----> see agg_depth_notes.doc
+# output "mar_dat.csv" which has 
+# year, month, temp, chla, zoop, and phyto columns
+
 
 ###########################################
 ####  Prepare data for MARSS analysis  ####
@@ -62,13 +63,11 @@ temp_small <- temp %>%
             #keep since 1975, <= 50m
             filter(year >= 1975 & depth <= 50)
             
-
 #aggregate across depths by month and year
 temp_monthly <- temp_small %>% 
                 group_by(year, month) %>% 
                 summarize(temp_050depth_avg = mean(temp, na.rm = TRUE)) %>% 
                 as.data.frame()
-
 
 ######################################################
 ####  Aggregate/average chlorophyll data by month ####
@@ -248,7 +247,6 @@ phy_monthly <- phy_newgen %>%
                   summarize(density_genus_sum = sum(density)) %>% 
                   as.data.frame()
 
-
 ######################################################
 #### Combine monthly data frames for MARSS format ####
 ######################################################
@@ -288,4 +286,3 @@ summary(dat_full)
 
 # ----> mwrite to csv for later use
 write.csv(dat_full, "../data/mar_dat.csv", row.names = FALSE)
-
